@@ -105,11 +105,11 @@ class EmptyList extends List{
 	}
 
 	override public function first():Object{
-		throw new Error("IllegalStateException: Can't get first from empty list");
+		return null;
 	}
 
 	override public function rest():ISeq{
-		throw new Error("IllegalStateException: Can't get rest from empty list");
+		return this;
 	}
 
 	override public function count():int{
