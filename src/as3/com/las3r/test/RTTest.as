@@ -43,6 +43,7 @@ package com.las3r.test{
 			var v:PersistentVector = PersistentVector.createFromMany(0, 42);
 			assertTrue("Value at index 0 should be 0", RT.nth(v, 0, notFound) === 0);
 			assertTrue("Value at index 1 should be 42", RT.nth(v, 1, notFound) === 42);
+			assertTrue("Value at index 2 should be notFound", RT.nth(v, 2, notFound) === notFound);
 		}
 
 		public function testArrayNth():void{
@@ -52,6 +53,23 @@ package com.las3r.test{
 			assertTrue("Value at index 1 should be 42", RT.nth(a, 1, notFound) === 42);
 			assertTrue("Value at (non-existent) index 2 should be notFound", RT.nth(a, 2, notFound) === notFound);
 			assertTrue("Value at (non-existent) index 2 should be 0", RT.nth(a, 2, 0) === 0);
+			assertTrue("Value at (non-existent) index 2 should be null", RT.nth(a, 2, null) === null);
+		}
+
+		public function testStringNth():void{
+			var notFound:Object = new Object;
+			var s:String = "ab";
+			assertTrue("Value at index 0 should be \"a\"", RT.nth(s, 0, notFound) === "a");
+			assertTrue("Value at (non-existent) index 2 should be notFound", RT.nth(s, 2, notFound) === notFound);
+			assertTrue("Value at (non-existent) index 2 should be null", RT.nth(s, 2, null) === null);
+		}
+
+		public function testListNth():void{
+			var notFound:Object = new Object;
+			var l:List = List.createFromArray([1,2]);
+			assertTrue("Value at index 0 should be 1", RT.nth(l, 0, notFound) === 1);
+			assertTrue("Value at (non-existent) index 2 should be notFound", RT.nth(l, 2, notFound) === notFound);
+			assertTrue("Value at (non-existent) index 2 should be false", RT.nth(l, 2, false) === false);
 		}
 	}
 }
