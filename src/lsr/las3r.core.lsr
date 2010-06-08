@@ -877,7 +877,8 @@
   "Returns the value at the index. get returns nil if index out of
   bounds, nth throws an exception unless not-found is supplied.  nth
   also works for strings, Java arrays, regex Matchers and Lists, and,
-  in O(n) time, for sequences."
+  in O(n) time, for sequences.
+  Note: if a not-found argument is provided it must not be AS3's undefined."
   ([coll index] (. com.las3r.runtime.RT (nth coll index)))
   ([coll index not-found] (. com.las3r.runtime.RT (nth coll index not-found))))
 
