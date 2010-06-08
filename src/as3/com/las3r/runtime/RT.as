@@ -655,40 +655,58 @@ package com.las3r.runtime{
 			return map.vals();
 		}
 
-		public static function nth(coll:Object, n:int, notFound:Object = null):Object{
-			if(coll == null){
-				return notFound;
-			}
-			else if(coll is IVector){
-				return IVector(coll).nth(n);
-			}
-			else if(coll is String){
-				if(String(coll).length > n){
-					return String(coll).charAt(n);
+		public static function nth(coll:Object, n:int, notFound:* = undefined):Object{
+			if(notFound === undefined) { // two argument version of nth()
+				if(coll == null){
+					return null;
+				} else if(coll is IVector){
+					return IVector(coll).nth(n);
+				} else if(coll is String){
+					return String(coll).charAt(n); // returns "" if the index is out of bounds
+				} else if(coll is Array){
+					return coll[n]; // returns undefined if the index is out of bounds
 				}
-				return notFound;
-			}
-			else if(coll is Array){
-				var val:* = coll[n];
-				if(val === undefined) {
-					if(notFound !== null) {
-						return notFound;
-					}
-					throw new Error("IndexOutOfBoundsException");
+			} else { // 3 argument version of nth(), may return notFound 
+				if(coll == null){
+					return notFound;
+				} else if(n < 0){
+					return notFound;
+				} else if(coll is IVector){
+					var v:IVector = IVector(coll);
+					return n < v.count() ? v.nth(n) : notFound;
+				} else if(coll is String){
+					var s:String = String(coll);
+					return n < s.length ? s.charAt(n) : notFound;
+				} else if(coll is Array){
+					return n < coll.length ? coll[n] : notFound;
 				}
-				return coll[n];
 			}
-			else if(coll is ISeq)
-			{
+			if(coll is ISeq){ // handles ISeqs in both 2 and 3 arg cases
 				var seq:ISeq = ISeq(coll);
-				for(var i:int = 0; i <= n && seq != null; ++i, seq = seq.rest())
-				{
-					if(i == n)
-					return seq.first();
+				for(var i:int = 0; i <= n && seq != null; ++i, seq = seq.rest()){
+					if(i == n) return seq.first();
 				}
-				return notFound;
+				// seq index out of bounds
+				if(notFound === undefined){
+					throw new Error("IndexOutOfBoundsException");
+				} else{
+					return notFound;
+				}
 			}
-			else
+			if(coll is MapEntry){ // handles MapEntries in both 2 and 3 arg cases
+				var e:MapEntry = MapEntry(coll);
+				if(n == 0){
+					return e.key;
+				} else if (n == 1){
+					return e.value;
+				}
+				if(notFound === undefined){
+					throw new Error("IndexOutOfBoundsException");
+				} else{
+					return notFound;
+				}
+			}
+
 			throw new ("UnsupportedOperationException: nth not supported on this object: " + coll);
 		}
 
