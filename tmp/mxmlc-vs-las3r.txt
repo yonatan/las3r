@@ -1,0 +1,22 @@
+differences in newactivation usage
+
+mxmlc bytecode:
+
+        getlocal0       
+        pushscope       
+
+        newactivation   
+        dup             
+        setlocal2       
+        pushscope       
+        getscopeobject  1
+
+las3r bytecode:
+
+        getlocal0     	
+        pushscope     	
+
+        newactivation 	
+        dup           	
+        pushscope     	
+        setlocal1     	

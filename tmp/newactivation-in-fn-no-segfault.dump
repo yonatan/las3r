@@ -1,0 +1,169 @@
+<!-- Parsing swf file:/home/yonatan/src/play/las3r/tmp/newactivation-in-fn-no-segfault.swf -->
+<!-- ?xml version="1.0" encoding="UTF-8"? -->
+<swf xmlns='http://macromedia/2003/swfx' version='9' framerate='12' size='8000x6000' compressed='false' >
+  <!-- framecount=1 length=368 -->
+  <FileAttributes hasMetadata='false' actionScript3='true' suppressCrossDomainCaching='false' swfRelativeUrls='false' useNetwork='false'/>
+  <DoABC>
+    16 0 minor version
+    46 0 major version
+    1 Integer Constant Pool Entries
+    1 Unsigned Integer Constant Pool Entries
+    1 Floating Point Constant Pool Entries
+    12 String Constant Pool Entries
+     
+     foo
+     Object
+     1C4FB2F38FB046669146AF556C8D4A0FF0F346F1
+     $cinit
+     $construct
+     rt
+     toplevelExceptionHandler
+     com.las3r.runtime
+     RT
+     modules
+    4 Namespace Constant Pool Entries
+     
+     
+     com.las3r.runtime
+    1 Namespace Set Constant Pool Entries
+    8 MultiName Constant Pool Entries
+    :Object
+    :1C4FB2F38FB046669146AF556C8D4A0FF0F346F1
+    :rt
+    :toplevelExceptionHandler
+    com.las3r.runtime:RT
+    :modules
+    :foo
+    4 Method Entries
+    $construct(): 
+    $cinit(): 
+    foo(,,): 
+    (): 
+    0 Metadata Entries
+    1 Instance Entries
+    :1C4FB2F38FB046669146AF556C8D4A0FF0F346F1 extends :Object 
+    0 Traits Entries
+    1 Class Entries
+    :1C4FB2F38FB046669146AF556C8D4A0FF0F346F1 extends Class 
+    0 Traits Entries
+    1 Script Entries
+    script0 
+    0 Traits Entries
+    4 Method Bodies
+    function :1C4FB2F38FB046669146AF556C8D4A0FF0F346F1:::1C4FB2F38FB046669146AF556C8D4A0FF0F346F1():
+    maxStack:2 localCount:1 initScopeDepth:2 maxScopeDepth:3
+        getlocal0     	
+        pushscope     	
+        getlocal0     	
+        constructsuper	(0)
+        returnvoid    	
+    0 Extras
+    0 Traits Entries
+
+    function :1C4FB2F38FB046669146AF556C8D4A0FF0F346F1:::1C4FB2F38FB046669146AF556C8D4A0FF0F346F1$cinit():
+    maxStack:0 localCount:1 initScopeDepth:0 maxScopeDepth:0
+        returnvoid    	
+    0 Extras
+    0 Traits Entries
+
+    var null::foo(, , ):
+    maxStack:4 localCount:8 initScopeDepth:2 maxScopeDepth:7
+        newactivation 	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        returnvoid    	
+        returnvoid    	
+    1 Extras
+    :toplevelExceptionHandler type: from:37 to:43 target:48
+    0 Traits Entries
+
+    function script0::script0$init():
+    maxStack:2 localCount:2 initScopeDepth:0 maxScopeDepth:2
+        getlocal0     	
+        pushscope     	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        nop           	
+        returnvoid    	
+    0 Extras
+    0 Traits Entries
+
+  </DoABC>
+  <ShowFrame/>
+</swf>
