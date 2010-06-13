@@ -397,442 +397,442 @@
   (list 'new 'com.las3r.runtime.LazyCons (list `fn (list [] first-expr) (list* [(gensym)] rest-expr))))
 
 
-(defn concat
-  "Returns a lazy seq representing the concatenation of	the elements in the supplied colls."
-  ([] nil)
-  ([x] (seq x))
-  ([x y] 
-     (if (seq x) 
-       (lazy-cons (first x) (concat (rest x) y))
-       (seq y)))
-  ([x y & zs]
-     (let [cat (fn cat [xys zs]
-		 (if (seq xys)
-		   (lazy-cons (first xys) (cat (rest xys) zs))
-		   (when zs
-		     (recur (first zs) (rest zs)))))]
-       (cat (concat x y) zs))))
-
-
-(defn throw-rte
-  "Throw a runtime error with the given message."
-  [m] (throw (new com.las3r.errors.RuntimeError m)))
-
-
-;;;;;;;;;;;;;;;;at this point all the support for syntax-quote exists;;;;;;;;;;;;;;;;;;;;;;
-
-(defn =
-  "Equality. Returns true if x equals y, false if not. Same as
-  Java x.equals(y) except it also works for nil, and compares
-  numbers in a type-independent manner.  Clojure's immutable data
-  structures define equals() (and thus =) as a value, not an identity,
-  comparison."
-  {:tag Boolean} 
-  ([x] true)
-  ([x y] (. com.las3r.util.Util (equal x y)))
-  ([x y & more]
-     (if (= x y)
-       (if (rest more)
-	 (recur y (first more) (rest more))
-	 (= y (first more)))
-       false)))
-
-(defn not=
-  "Same as (not (= obj1 obj2))"
-  {:tag Boolean}
-  ([x] false)
-  ([x y] (not (= x y)))
-  ([x y & more]
-     (not (apply = x y more))))
-
-
-(defn compare
-  "Comparator. Returns 0 if x equals y, -1 if x is logically 'less
-  than' y, else 1. Same as Java x.compareTo(y) except it also works
-  for nil, and compares numbers in a type-independent manner. x must
-  implement Comparable"
-  {:tag Number
-   :inline (fn [x y] `(. com.las3r.util.Util compare ~x ~y))} 
-  [x y] (. com.las3r.util.Util (compare x y)))
-
-(defmacro and
-  "Evaluates exprs one at a time, from left to right. If a form
-  returns logical false (nil or false), and returns that value and
-  doesn't evaluate any of the other expressions, otherwise it returns
-  the value of the last expr. (and) returns true."
-  ([] true)
-  ([x] x)
-  ([x & rest]
-     `(let [and# ~x]
-	(if and# (and ~@rest) and#))))
-
-(defmacro or
-  "Evaluates exprs one at a time, from left to right. If a form
-  returns a logical true value, or returns that value and doesn't
-  evaluate any of the other expressions, otherwise it returns the
-  value of the last expression. (or) returns nil."
-  ([] nil)
-  ([x] x)
-  ([x & rest]
-     `(let [or# ~x]
-	(if or# or# (or ~@rest)))))
-
-
-
-
-;;;;;;;;;;;;;;;;;;; sequence fns  ;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn reduce
-  "f should be a function of 2 arguments. If val is not supplied,
-  returns the result of applying f to the first 2 items in coll, then
-  applying f to that result and the 3rd item, etc. If coll contains no
-  items, f must accept no arguments as well, and reduce returns the
-  result of calling f with no arguments.  If coll has only 1 item, it
-  is returned and f is not called.  If val is supplied, returns the
-  result of applying f to val and the first item in coll, then
-  applying f to that result and the 2nd item, etc. If coll contains no
-  items, returns val and f is not called."
-  ([f coll]
-     (let [s (seq coll)]
-       (if s
-	 (reduce f (first s) (rest s))
-	 (f))))
-  ([f val coll]
-     (let [s (seq coll)]
-       (if (instance? com.las3r.runtime.IReduce s)
-         (. #^com.las3r.runtime.IReduce s (reduce f val))
-         ((fn [f val s]
-            (if s
-              (recur f (f val (first s)) (rest s))
-              val))
-          f val s)))))
-
-(defn reverse
-  "Returns a seq of the items in coll in reverse order. Not lazy."
-  [coll]
-  (reduce conj nil coll))
-
-
-;; Special functions
-
-(defn complement
-  "Takes a fn f and returns a fn that takes the same arguments as f,
-  has the same effects, if any, and returns the opposite truth value."  
-  [f] (fn [& args]
-        (not (apply f args))))
-
-
-(defn constantly
-  "Returns a function that takes any number of arguments and returns x."
-  [x] (fn [& args] x))
-
-
-(defn identity
-  "Returns its argument."
-  [x] x)
-
-
-(defn comp
-  "Takes a set of functions and returns a fn that is the composition
-  of those fns.  The returned fn takes a variable number of args,
-  applies the rightmost of fns to the args, the next
-  fn (right-to-left) to the result, etc."
-  [& fs]
-  (let [fs (reverse fs)]
-    (fn [& args]
-      (loop* [ret (apply (first fs) args) fs (rest fs)]
-	     (if fs
-	       (recur ((first fs) ret) (rest fs))
-	       ret)))))
-
-
-(defn partial
-  "Takes a function f and fewer than the normal arguments to f, and
-  returns a fn that takes a variable number of additional args. When
-  called, the returned function calls f with args + additional args."
-  ([f arg1]
-     (fn [& args] (apply f arg1 args)))
-  ([f arg1 arg2]
-     (fn [& args] (apply f arg1 arg2 args)))
-  ([f arg1 arg2 arg3]
-     (fn [& args] (apply f arg1 arg2 arg3 args)))
-  ([f arg1 arg2 arg3 & more]
-     (fn [& args] (apply f arg1 arg2 arg3 (concat more args)))))
-
-
-
-
-;;map stuff
-
-(defn contains?
-  "Returns true if key is present, else false."
-  [map key] (. com.las3r.runtime.RT (contains map key)))
-
-(defn get
-  "Returns the value mapped to key, not-found or nil if key not present."
-  ([map key]
-     (. com.las3r.runtime.RT (get map key)))
-  ([map key not-found]
-     (. com.las3r.runtime.RT (get map key not-found))))
-
-(defn dissoc
-  "dissoc[iate]. Returns a new map of the same (hashed/sorted) type,
-  that does not contain a mapping for key(s)."
-  ([map] map)
-  ([map key]
-     (. com.las3r.runtime.RT (dissoc map key)))
-  ([map key & ks]
-     (let [ret (dissoc map key)]
-       (if ks
-	 (recur ret (first ks) (rest ks))
-	 ret))))
-
-(defn disj
-  "disj[oin]. Returns a new set of the same (hashed/sorted) type, that
-  does not contain key(s)."
-  ([set] set)
-  ([#^com.las3r.runtime.ISet set key]
-     (. set (remove key)))
-  ([set key & ks]
-     (let [ret (disj set key)]
-       (if ks
-	 (recur ret (first ks) (rest ks))
-	 ret))))
-
-(defn find
-  "Returns the map entry for key, or nil if key not present."
-  [map key] (. com.las3r.runtime.RT (find map key)))
-
-(defn select-keys
-  "Returns a map containing only those entries in map whose key is in keys"
-  [map keyseq]
-  (loop* [ret {} keys (seq keyseq)]
-	 (if keys
-	   (let [entry (. com.las3r.runtime.RT (find map (first keys)))]
-	     (recur
-	      (if entry
-		(conj ret entry)
-		ret)
-	      (rest keys)))
-	   ret)))
-
-(defn keys
-  "Returns a sequence of the map's keys."
-  [map] (. com.las3r.runtime.RT (keys map)))
-
-(defn vals
-  "Returns a sequence of the map's values."
-  [map] (. com.las3r.runtime.RT (vals map)))
-
-(defn key
-  "Returns the key of the map entry."
-  [#^com.las3r.runtime.MapEntry e]
-  (. e key))
-
-(defn val
-  "Returns the value in the map entry."
-  [#^com.las3r.runtime.MapEntry e]
-  (. e value))
-
-
-(defn name
-  "Returns the name String of a symbol or keyword."
-  [x]
-  (. x (getName)))
-
-(defn namespace
-  "Returns the namespace String of a symbol or keyword, or nil if not present."
-  [x]
-  (. x (getNamespace)))
-
-
-;;math stuff
-
-(defn +
-  "Returns the sum of nums. (+) returns 0."
-  ([] 0)
-  ([x] (cast Number x))
-  ([x y] (. com.las3r.runtime.Numbers (add x y)))
-  ([x y & more]
-     (reduce + (+ x y) more)))
-
-(defn *
-  "Returns the product of nums. (*) returns 1."
-  ([] 1)
-  ([x] (cast Number x))
-  ([x y] (. com.las3r.runtime.Numbers (multiply x y)))
-  ([x y & more]
-     (reduce * (* x y) more)))
-
-(defn /
-  "If no denominators are supplied, returns 1/numerator,
-  else returns numerator divided by all of the denominators."
-  ([x] (/ 1 x))
-  ([x y] (. com.las3r.runtime.Numbers (divide x y)))
-  ([x y & more]
-     (reduce / (/ x y) more)))
-
-(defn -
-  "If no ys are supplied, returns the negation of x, else subtracts
-  the ys from x and returns the result."
-  ([x] (. com.las3r.runtime.Numbers (negate x)))
-  ([x y] (. com.las3r.runtime.Numbers (minus x y)))
-  ([x y & more]
-     (reduce - (- x y) more)))
-
-(defn <
-  "Returns non-nil if nums are in monotonically increasing order,
-  otherwise false."
-  ([x] true)
-  ([x y] (. com.las3r.runtime.Numbers (lt x y)))
-  ([x y & more]
-     (if (< x y)
-       (if (rest more)
-	 (recur y (first more) (rest more))
-	 (< y (first more)))
-       false)))
-
-(defn <=
-  "Returns non-nil if nums are in monotonically non-decreasing order,
-  otherwise false."
-  ([x] true)
-  ([x y] (. com.las3r.runtime.Numbers (lte x y)))
-  ([x y & more]
-     (if (<= x y)
-       (if (rest more)
-	 (recur y (first more) (rest more))
-	 (<= y (first more)))
-       false)))
-
-(defn >
-  "Returns non-nil if nums are in monotonically decreasing order,
-  otherwise false."
-  ([x] true)
-  ([x y] (. com.las3r.runtime.Numbers (gt x y)))
-  ([x y & more]
-     (if (> x y)
-       (if (rest more)
-	 (recur y (first more) (rest more))
-	 (> y (first more)))
-       false)))
-
-(defn >=
-  "Returns non-nil if nums are in monotonically non-increasing order,
-  otherwise false."
-  ([x] true)
-  ([x y] (. com.las3r.runtime.Numbers (gte x y)))
-  ([x y & more]
-     (if (>= x y)
-       (if (rest more)
-	 (recur y (first more) (rest more))
-	 (>= y (first more)))
-       false)))
-
-(defn ==
-  "Returns non-nil if nums all have the same value, otherwise false"
-  ([x] true)
-  ([x y] (. com.las3r.runtime.Numbers (equiv x y)))
-  ([x y & more]
-     (if (== x y)
-       (if (rest more)
-	 (recur y (first more) (rest more))
-	 (== y (first more)))
-       false)))
-
-(defn max
-  "Returns the greatest of the nums."
-  ([x] x)
-  ([x y] (if (> x y) x y))
-  ([x y & more]
-     (reduce max (max x y) more)))
-
-(defn min
-  "Returns the least of the nums."
-  ([x] x)
-  ([x y] (if (< x y) x y))
-  ([x y & more]
-     (reduce min (min x y) more)))
-
-(defn inc
-  "Returns a number one greater than num."
-  [x] (. com.las3r.runtime.Numbers (inc x)))
-
-(defn dec
-  "Returns a number one less than num."
-  [x] (. com.las3r.runtime.Numbers (dec x)))
-
-(defn pos?
-  "Returns true if num is greater than zero, else false"
-  [x] (> x 0))
-
-(defn neg?
-  "Returns true if num is less than zero, else false"
-  [x] (< x 0))
-
-(defn zero?
-  "Returns true if num is zero, else false"
-  [x] (= x 0))
-
-(defn rem
-  "rem[ainder] of dividing numerator by denominator."
-  [num div]
-  (. com.las3r.runtime.Numbers (remainder num div)))
-
-;;Bit ops
-
-(defn bit-not
-  "Bitwise complement"
-  [x] (. com.las3r.runtime.Numbers (not x)))
-
-
-(defn bit-and
-  "Bitwise and"
-  ([x] x)
-  ([x y] (. com.las3r.runtime.Numbers (and x y)))
-  ([x y & more]
-     (reduce bit-and (bit-and x y) more)))
-
-(defn bit-or
-  "Bitwise or"
-  ([x] x)
-  ([x y] (. com.las3r.runtime.Numbers (or x y)))
-  ([x y & more]
-     (reduce bit-or (bit-or x y) more)))
-
-(defn bit-xor
-  "Bitwise exclusive or"
-  ([x] x)
-  ([x y] (. com.las3r.runtime.Numbers (xor x y)))
-  ([x y & more]
-     (reduce bit-and (bit-and x y) more)))
-
-(defn bit-shl
-  "Bitwise shift left"
-  ([x n] (. com.las3r.runtime.Numbers (shl x n))))
-
-(defn bit-shr
-  "Bitwise shift right"
-  ([x n] (. com.las3r.runtime.Numbers (shr x n))))
-
-(defn bit-sar
-  "Bitwise shift arithmetic right"
-  ([x n] (. com.las3r.runtime.Numbers (sar x n))))
-
-;; clojury aliases
-(def bit-shift-left bit-shl)
-(def bit-shift-right bit-sar)
-
-
-(defn even?
-  "Returns true if n is even, throws an exception if n is not an integer"
-  [n] (zero? (bit-and n 1)))
-
-(defn odd?
-  "Returns true if n is odd, throws an exception if n is not an integer"
-  [n] (not (even? n)))
-
-
-;;;;;;;;; var stuff      
+;; (defn concat
+;;   "Returns a lazy seq representing the concatenation of	the elements in the supplied colls."
+;;   ([] nil)
+;;   ([x] (seq x))
+;;   ([x y] 
+;;      (if (seq x) 
+;;        (lazy-cons (first x) (concat (rest x) y))
+;;        (seq y)))
+;;   ([x y & zs]
+;;      (let [cat (fn cat [xys zs]
+;; 		 (if (seq xys)
+;; 		   (lazy-cons (first xys) (cat (rest xys) zs))
+;; 		   (when zs
+;; 		     (recur (first zs) (rest zs)))))]
+;;        (cat (concat x y) zs))))
+
+
+;; (defn throw-rte
+;;   "Throw a runtime error with the given message."
+;;   [m] (throw (new com.las3r.errors.RuntimeError m)))
+
+
+;; ;;;;;;;;;;;;;;;;at this point all the support for syntax-quote exists;;;;;;;;;;;;;;;;;;;;;;
+
+;; (defn =
+;;   "Equality. Returns true if x equals y, false if not. Same as
+;;   Java x.equals(y) except it also works for nil, and compares
+;;   numbers in a type-independent manner.  Clojure's immutable data
+;;   structures define equals() (and thus =) as a value, not an identity,
+;;   comparison."
+;;   {:tag Boolean} 
+;;   ([x] true)
+;;   ([x y] (. com.las3r.util.Util (equal x y)))
+;;   ([x y & more]
+;;      (if (= x y)
+;;        (if (rest more)
+;; 	 (recur y (first more) (rest more))
+;; 	 (= y (first more)))
+;;        false)))
+
+;; (defn not=
+;;   "Same as (not (= obj1 obj2))"
+;;   {:tag Boolean}
+;;   ([x] false)
+;;   ([x y] (not (= x y)))
+;;   ([x y & more]
+;;      (not (apply = x y more))))
+
+
+;; (defn compare
+;;   "Comparator. Returns 0 if x equals y, -1 if x is logically 'less
+;;   than' y, else 1. Same as Java x.compareTo(y) except it also works
+;;   for nil, and compares numbers in a type-independent manner. x must
+;;   implement Comparable"
+;;   {:tag Number
+;;    :inline (fn [x y] `(. com.las3r.util.Util compare ~x ~y))} 
+;;   [x y] (. com.las3r.util.Util (compare x y)))
+
+;; (defmacro and
+;;   "Evaluates exprs one at a time, from left to right. If a form
+;;   returns logical false (nil or false), and returns that value and
+;;   doesn't evaluate any of the other expressions, otherwise it returns
+;;   the value of the last expr. (and) returns true."
+;;   ([] true)
+;;   ([x] x)
+;;   ([x & rest]
+;;      `(let [and# ~x]
+;; 	(if and# (and ~@rest) and#))))
+
+;; (defmacro or
+;;   "Evaluates exprs one at a time, from left to right. If a form
+;;   returns a logical true value, or returns that value and doesn't
+;;   evaluate any of the other expressions, otherwise it returns the
+;;   value of the last expression. (or) returns nil."
+;;   ([] nil)
+;;   ([x] x)
+;;   ([x & rest]
+;;      `(let [or# ~x]
+;; 	(if or# or# (or ~@rest)))))
+
+
+
+
+;; ;;;;;;;;;;;;;;;;;;; sequence fns  ;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (defn reduce
+;;   "f should be a function of 2 arguments. If val is not supplied,
+;;   returns the result of applying f to the first 2 items in coll, then
+;;   applying f to that result and the 3rd item, etc. If coll contains no
+;;   items, f must accept no arguments as well, and reduce returns the
+;;   result of calling f with no arguments.  If coll has only 1 item, it
+;;   is returned and f is not called.  If val is supplied, returns the
+;;   result of applying f to val and the first item in coll, then
+;;   applying f to that result and the 2nd item, etc. If coll contains no
+;;   items, returns val and f is not called."
+;;   ([f coll]
+;;      (let [s (seq coll)]
+;;        (if s
+;; 	 (reduce f (first s) (rest s))
+;; 	 (f))))
+;;   ([f val coll]
+;;      (let [s (seq coll)]
+;;        (if (instance? com.las3r.runtime.IReduce s)
+;;          (. #^com.las3r.runtime.IReduce s (reduce f val))
+;;          ((fn [f val s]
+;;             (if s
+;;               (recur f (f val (first s)) (rest s))
+;;               val))
+;;           f val s)))))
+
+;; (defn reverse
+;;   "Returns a seq of the items in coll in reverse order. Not lazy."
+;;   [coll]
+;;   (reduce conj nil coll))
+
+
+;; ;; Special functions
+
+;; (defn complement
+;;   "Takes a fn f and returns a fn that takes the same arguments as f,
+;;   has the same effects, if any, and returns the opposite truth value."  
+;;   [f] (fn [& args]
+;;         (not (apply f args))))
+
+
+;; (defn constantly
+;;   "Returns a function that takes any number of arguments and returns x."
+;;   [x] (fn [& args] x))
+
+
+;; (defn identity
+;;   "Returns its argument."
+;;   [x] x)
+
+
+;; (defn comp
+;;   "Takes a set of functions and returns a fn that is the composition
+;;   of those fns.  The returned fn takes a variable number of args,
+;;   applies the rightmost of fns to the args, the next
+;;   fn (right-to-left) to the result, etc."
+;;   [& fs]
+;;   (let [fs (reverse fs)]
+;;     (fn [& args]
+;;       (loop* [ret (apply (first fs) args) fs (rest fs)]
+;; 	     (if fs
+;; 	       (recur ((first fs) ret) (rest fs))
+;; 	       ret)))))
+
+
+;; (defn partial
+;;   "Takes a function f and fewer than the normal arguments to f, and
+;;   returns a fn that takes a variable number of additional args. When
+;;   called, the returned function calls f with args + additional args."
+;;   ([f arg1]
+;;      (fn [& args] (apply f arg1 args)))
+;;   ([f arg1 arg2]
+;;      (fn [& args] (apply f arg1 arg2 args)))
+;;   ([f arg1 arg2 arg3]
+;;      (fn [& args] (apply f arg1 arg2 arg3 args)))
+;;   ([f arg1 arg2 arg3 & more]
+;;      (fn [& args] (apply f arg1 arg2 arg3 (concat more args)))))
+
+
+
+
+;; ;;map stuff
+
+;; (defn contains?
+;;   "Returns true if key is present, else false."
+;;   [map key] (. com.las3r.runtime.RT (contains map key)))
+
+;; (defn get
+;;   "Returns the value mapped to key, not-found or nil if key not present."
+;;   ([map key]
+;;      (. com.las3r.runtime.RT (get map key)))
+;;   ([map key not-found]
+;;      (. com.las3r.runtime.RT (get map key not-found))))
+
+;; (defn dissoc
+;;   "dissoc[iate]. Returns a new map of the same (hashed/sorted) type,
+;;   that does not contain a mapping for key(s)."
+;;   ([map] map)
+;;   ([map key]
+;;      (. com.las3r.runtime.RT (dissoc map key)))
+;;   ([map key & ks]
+;;      (let [ret (dissoc map key)]
+;;        (if ks
+;; 	 (recur ret (first ks) (rest ks))
+;; 	 ret))))
+
+;; (defn disj
+;;   "disj[oin]. Returns a new set of the same (hashed/sorted) type, that
+;;   does not contain key(s)."
+;;   ([set] set)
+;;   ([#^com.las3r.runtime.ISet set key]
+;;      (. set (remove key)))
+;;   ([set key & ks]
+;;      (let [ret (disj set key)]
+;;        (if ks
+;; 	 (recur ret (first ks) (rest ks))
+;; 	 ret))))
+
+;; (defn find
+;;   "Returns the map entry for key, or nil if key not present."
+;;   [map key] (. com.las3r.runtime.RT (find map key)))
+
+;; (defn select-keys
+;;   "Returns a map containing only those entries in map whose key is in keys"
+;;   [map keyseq]
+;;   (loop* [ret {} keys (seq keyseq)]
+;; 	 (if keys
+;; 	   (let [entry (. com.las3r.runtime.RT (find map (first keys)))]
+;; 	     (recur
+;; 	      (if entry
+;; 		(conj ret entry)
+;; 		ret)
+;; 	      (rest keys)))
+;; 	   ret)))
+
+;; (defn keys
+;;   "Returns a sequence of the map's keys."
+;;   [map] (. com.las3r.runtime.RT (keys map)))
+
+;; (defn vals
+;;   "Returns a sequence of the map's values."
+;;   [map] (. com.las3r.runtime.RT (vals map)))
+
+;; (defn key
+;;   "Returns the key of the map entry."
+;;   [#^com.las3r.runtime.MapEntry e]
+;;   (. e key))
+
+;; (defn val
+;;   "Returns the value in the map entry."
+;;   [#^com.las3r.runtime.MapEntry e]
+;;   (. e value))
+
+
+;; (defn name
+;;   "Returns the name String of a symbol or keyword."
+;;   [x]
+;;   (. x (getName)))
+
+;; (defn namespace
+;;   "Returns the namespace String of a symbol or keyword, or nil if not present."
+;;   [x]
+;;   (. x (getNamespace)))
+
+
+;; ;;math stuff
+
+;; (defn +
+;;   "Returns the sum of nums. (+) returns 0."
+;;   ([] 0)
+;;   ([x] (cast Number x))
+;;   ([x y] (. com.las3r.runtime.Numbers (add x y)))
+;;   ([x y & more]
+;;      (reduce + (+ x y) more)))
+
+;; (defn *
+;;   "Returns the product of nums. (*) returns 1."
+;;   ([] 1)
+;;   ([x] (cast Number x))
+;;   ([x y] (. com.las3r.runtime.Numbers (multiply x y)))
+;;   ([x y & more]
+;;      (reduce * (* x y) more)))
+
+;; (defn /
+;;   "If no denominators are supplied, returns 1/numerator,
+;;   else returns numerator divided by all of the denominators."
+;;   ([x] (/ 1 x))
+;;   ([x y] (. com.las3r.runtime.Numbers (divide x y)))
+;;   ([x y & more]
+;;      (reduce / (/ x y) more)))
+
+;; (defn -
+;;   "If no ys are supplied, returns the negation of x, else subtracts
+;;   the ys from x and returns the result."
+;;   ([x] (. com.las3r.runtime.Numbers (negate x)))
+;;   ([x y] (. com.las3r.runtime.Numbers (minus x y)))
+;;   ([x y & more]
+;;      (reduce - (- x y) more)))
+
+;; (defn <
+;;   "Returns non-nil if nums are in monotonically increasing order,
+;;   otherwise false."
+;;   ([x] true)
+;;   ([x y] (. com.las3r.runtime.Numbers (lt x y)))
+;;   ([x y & more]
+;;      (if (< x y)
+;;        (if (rest more)
+;; 	 (recur y (first more) (rest more))
+;; 	 (< y (first more)))
+;;        false)))
+
+;; (defn <=
+;;   "Returns non-nil if nums are in monotonically non-decreasing order,
+;;   otherwise false."
+;;   ([x] true)
+;;   ([x y] (. com.las3r.runtime.Numbers (lte x y)))
+;;   ([x y & more]
+;;      (if (<= x y)
+;;        (if (rest more)
+;; 	 (recur y (first more) (rest more))
+;; 	 (<= y (first more)))
+;;        false)))
+
+;; (defn >
+;;   "Returns non-nil if nums are in monotonically decreasing order,
+;;   otherwise false."
+;;   ([x] true)
+;;   ([x y] (. com.las3r.runtime.Numbers (gt x y)))
+;;   ([x y & more]
+;;      (if (> x y)
+;;        (if (rest more)
+;; 	 (recur y (first more) (rest more))
+;; 	 (> y (first more)))
+;;        false)))
+
+;; (defn >=
+;;   "Returns non-nil if nums are in monotonically non-increasing order,
+;;   otherwise false."
+;;   ([x] true)
+;;   ([x y] (. com.las3r.runtime.Numbers (gte x y)))
+;;   ([x y & more]
+;;      (if (>= x y)
+;;        (if (rest more)
+;; 	 (recur y (first more) (rest more))
+;; 	 (>= y (first more)))
+;;        false)))
+
+;; (defn ==
+;;   "Returns non-nil if nums all have the same value, otherwise false"
+;;   ([x] true)
+;;   ([x y] (. com.las3r.runtime.Numbers (equiv x y)))
+;;   ([x y & more]
+;;      (if (== x y)
+;;        (if (rest more)
+;; 	 (recur y (first more) (rest more))
+;; 	 (== y (first more)))
+;;        false)))
+
+;; (defn max
+;;   "Returns the greatest of the nums."
+;;   ([x] x)
+;;   ([x y] (if (> x y) x y))
+;;   ([x y & more]
+;;      (reduce max (max x y) more)))
+
+;; (defn min
+;;   "Returns the least of the nums."
+;;   ([x] x)
+;;   ([x y] (if (< x y) x y))
+;;   ([x y & more]
+;;      (reduce min (min x y) more)))
+
+;; (defn inc
+;;   "Returns a number one greater than num."
+;;   [x] (. com.las3r.runtime.Numbers (inc x)))
+
+;; (defn dec
+;;   "Returns a number one less than num."
+;;   [x] (. com.las3r.runtime.Numbers (dec x)))
+
+;; (defn pos?
+;;   "Returns true if num is greater than zero, else false"
+;;   [x] (> x 0))
+
+;; (defn neg?
+;;   "Returns true if num is less than zero, else false"
+;;   [x] (< x 0))
+
+;; (defn zero?
+;;   "Returns true if num is zero, else false"
+;;   [x] (= x 0))
+
+;; (defn rem
+;;   "rem[ainder] of dividing numerator by denominator."
+;;   [num div]
+;;   (. com.las3r.runtime.Numbers (remainder num div)))
+
+;; ;;Bit ops
+
+;; (defn bit-not
+;;   "Bitwise complement"
+;;   [x] (. com.las3r.runtime.Numbers (not x)))
+
+
+;; (defn bit-and
+;;   "Bitwise and"
+;;   ([x] x)
+;;   ([x y] (. com.las3r.runtime.Numbers (and x y)))
+;;   ([x y & more]
+;;      (reduce bit-and (bit-and x y) more)))
+
+;; (defn bit-or
+;;   "Bitwise or"
+;;   ([x] x)
+;;   ([x y] (. com.las3r.runtime.Numbers (or x y)))
+;;   ([x y & more]
+;;      (reduce bit-or (bit-or x y) more)))
+
+;; (defn bit-xor
+;;   "Bitwise exclusive or"
+;;   ([x] x)
+;;   ([x y] (. com.las3r.runtime.Numbers (xor x y)))
+;;   ([x y & more]
+;;      (reduce bit-and (bit-and x y) more)))
+
+;; (defn bit-shl
+;;   "Bitwise shift left"
+;;   ([x n] (. com.las3r.runtime.Numbers (shl x n))))
+
+;; (defn bit-shr
+;;   "Bitwise shift right"
+;;   ([x n] (. com.las3r.runtime.Numbers (shr x n))))
+
+;; (defn bit-sar
+;;   "Bitwise shift arithmetic right"
+;;   ([x n] (. com.las3r.runtime.Numbers (sar x n))))
+
+;; ;; clojury aliases
+;; (def bit-shift-left bit-shl)
+;; (def bit-shift-right bit-sar)
+
+
+;; (defn even?
+;;   "Returns true if n is even, throws an exception if n is not an integer"
+;;   [n] (zero? (bit-and n 1)))
+
+;; (defn odd?
+;;   "Returns true if n is odd, throws an exception if n is not an integer"
+;;   [n] (not (even? n)))
+
+
+;; ;;;;;;;;; var stuff      
 
 
 (defmacro binding
@@ -856,1316 +856,1314 @@
 	 (. com.las3r.runtime.Var (popBindings *runtime*)))))))
 
 
-(defn find-var
-  "Returns the global var named by the namespace-qualified symbol, or
-  nil if no var with that name."
-  [sym] (. com.las3r.runtime.Var (find *runtime* sym)))
+;; (defn find-var
+;;   "Returns the global var named by the namespace-qualified symbol, or
+;;   nil if no var with that name."
+;;   [sym] (. com.las3r.runtime.Var (find *runtime* sym)))
 
 
 
-;; Collection stuff
+;; ;; Collection stuff
 
-(defn count
-  "Returns the number of items in the collection. (count nil) returns
-  0.  Also works on strings, arrays and maps"
-  [coll] (. com.las3r.runtime.RT (count coll)))
-
-
-;;list stuff
-
-(defn nth
-  "Returns the value at the index. get returns nil if index out of
-  bounds, nth throws an exception unless not-found is supplied.  nth
-  also works for strings, Java arrays, regex Matchers and Lists, and,
-  in O(n) time, for sequences."
-  ([coll index] (. com.las3r.runtime.RT (nth coll index)))
-  ([coll index not-found] (. com.las3r.runtime.RT (nth coll index not-found))))
+;; (defn count
+;;   "Returns the number of items in the collection. (count nil) returns
+;;   0.  Also works on strings, arrays and maps"
+;;   [coll] (. com.las3r.runtime.RT (count coll)))
 
 
-;;;;;;;;;;;;;;;;; Tracing to console...
+;; ;;list stuff
 
-(defn pr
-  "Trace out the object. By default, pr and prn print in a way that objects
-  can be read by the reader"
-  ([] nil)
-  ([x]
-     (. *runtime* (print x *out*))
-     nil)
-  ([x & more]
-     (pr x)
-     (. *out* (write \space))
-     (apply pr more)))
+;; (defn nth
+;;   "Returns the value at the index. get returns nil if index out of
+;;   bounds, nth throws an exception unless not-found is supplied.  nth
+;;   also works for strings, Java arrays, regex Matchers and Lists, and,
+;;   in O(n) time, for sequences."
+;;   ([coll index] (. com.las3r.runtime.RT (nth coll index)))
+;;   ([coll index not-found] (. com.las3r.runtime.RT (nth coll index not-found))))
 
 
-(defn newline 
-  "Writes a newline to the output stream that is the current value of
-  *out*" 
-  []
-  (. *out* (write \newline))
-  nil)
+;; ;;;;;;;;;;;;;;;;; Tracing to console...
+
+;; (defn pr
+;;   "Trace out the object. By default, pr and prn print in a way that objects
+;;   can be read by the reader"
+;;   ([] nil)
+;;   ([x]
+;;      (. *runtime* (print x *out*))
+;;      nil)
+;;   ([x & more]
+;;      (pr x)
+;;      (. *out* (write \space))
+;;      (apply pr more)))
 
 
-(defn prn
-  "Same as pr followed by (newline)."
-  [& more]
-  (apply pr more)
-  (newline))
+;; (defn newline 
+;;   "Writes a newline to the output stream that is the current value of
+;;   *out*" 
+;;   []
+;;   (. *out* (write \newline))
+;;   nil)
 
 
-(defn print
-  "Trace out the object(s). print and println produce output for human consumption."
-  [& more]
-  (binding [*print-readably* nil]
-    (apply pr more)))
+;; (defn prn
+;;   "Same as pr followed by (newline)."
+;;   [& more]
+;;   (apply pr more)
+;;   (newline))
 
 
-(defn println
-  "Same as print followed by (newline)"
-  [& more]
-  (binding [*print-readably* nil]
-    (apply prn more)))
+;; (defn print
+;;   "Trace out the object(s). print and println produce output for human consumption."
+;;   [& more]
+;;   (binding [*print-readably* nil]
+;;     (apply pr more)))
 
 
-(defmacro assert
-  "Evaluates expr and throws an exception if it does not evaluate to
- logical true."
-  [x]
-  `(when-not ~x
-     (throw (new Error (str "Assert failed: " '~x)))))
+;; (defn println
+;;   "Same as print followed by (newline)"
+;;   [& more]
+;;   (binding [*print-readably* nil]
+;;     (apply prn more)))
+
+
+;; (defmacro assert
+;;   "Evaluates expr and throws an exception if it does not evaluate to
+;;  logical true."
+;;   [x]
+;;   `(when-not ~x
+;;      (throw (new Error (str "Assert failed: " '~x)))))
 
 
 
-;;;;;;;;;;;;;;;;;;; sequence fns  ;;;;;;;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;;;;;;;;; sequence fns  ;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn not-empty 
-  "If coll is empty, returns nil, else coll"
-  [coll] (when (seq coll) coll))
+;; (defn not-empty 
+;;   "If coll is empty, returns nil, else coll"
+;;   [coll] (when (seq coll) coll))
   
-(defn every?
-  "Returns true if (pred x) is logical true for every x in coll, else
-  false."  
-  [pred coll]
-  (if (seq coll)
-    (and (pred (first coll))
-	 (recur pred (rest coll)))
-    true))
+;; (defn every?
+;;   "Returns true if (pred x) is logical true for every x in coll, else
+;;   false."  
+;;   [pred coll]
+;;   (if (seq coll)
+;;     (and (pred (first coll))
+;; 	 (recur pred (rest coll)))
+;;     true))
 
-(def
- #^{:tag Boolean
-    :doc "Returns false if (pred x) is logical true for every x in 
-  coll, else true."
-    :arglists '([pred coll])}
- not-every? (comp not every?))
+;; (def
+;;  #^{:tag Boolean
+;;     :doc "Returns false if (pred x) is logical true for every x in 
+;;   coll, else true."
+;;     :arglists '([pred coll])}
+;;  not-every? (comp not every?))
 
-(defn some
-  "Returns the first logical true value of (pred x) for any x in coll,
-  else nil."
-  [pred coll]
-  (when (seq coll)
-    (or (pred (first coll)) (recur pred (rest coll)))))
-
-
-(def 
- #^{:tag Boolean
-    :doc "Returns false if (pred x) is logical true for any x in coll,
-  else true."
-    :arglists '([pred coll])}
- not-any? (comp not some))
+;; (defn some
+;;   "Returns the first logical true value of (pred x) for any x in coll,
+;;   else nil."
+;;   [pred coll]
+;;   (when (seq coll)
+;;     (or (pred (first coll)) (recur pred (rest coll)))))
 
 
-(defn map
-  "Returns a lazy seq consisting of the result of applying f to the
-  set of first items of each coll, followed by applying f to the set
-  of second items in each coll, until any one of the colls is
-  exhausted.  Any remaining items in other colls are ignored. Function
-  f should accept number-of-colls arguments."
-  ([f coll]
-     (when (seq coll)
-       (lazy-cons (f (first coll)) (map f (rest coll)))))
-  ([f coll & colls]
-     (when (and (seq coll) (every? seq colls))
-       (lazy-cons (apply f (first coll) (map first colls))
-		  (apply map f (rest coll) (map rest colls))))))
+;; (def 
+;;  #^{:tag Boolean
+;;     :doc "Returns false if (pred x) is logical true for any x in coll,
+;;   else true."
+;;     :arglists '([pred coll])}
+;;  not-any? (comp not some))
 
-(defn mapcat
-  "Returns the result of applying concat to the result of applying map
-  to f and colls.  Thus function f should return a collection."
-  [f & colls]
-  (apply concat (apply map f colls)))
 
-(defn filter
-  "Returns a lazy seq of the items in coll for which
-  (pred item) returns true. pred must be free of side-effects."
-  [pred coll]
-  (when (seq coll)
-    (if (pred (first coll))
-      (lazy-cons (first coll) (filter pred (rest coll)))
-      (recur pred (rest coll)))))
+;; (defn map
+;;   "Returns a lazy seq consisting of the result of applying f to the
+;;   set of first items of each coll, followed by applying f to the set
+;;   of second items in each coll, until any one of the colls is
+;;   exhausted.  Any remaining items in other colls are ignored. Function
+;;   f should accept number-of-colls arguments."
+;;   ([f coll]
+;;      (when (seq coll)
+;;        (lazy-cons (f (first coll)) (map f (rest coll)))))
+;;   ([f coll & colls]
+;;      (when (and (seq coll) (every? seq colls))
+;;        (lazy-cons (apply f (first coll) (map first colls))
+;; 		  (apply map f (rest coll) (map rest colls))))))
 
-(defn take
-  "Returns a lazy seq of the first n items in coll, or all items if
-  there are fewer than n."  
-  [n coll]
-  (when (and (pos? n) (seq coll))
-    (lazy-cons (first coll) (take (dec n) (rest coll)))))
+;; (defn mapcat
+;;   "Returns the result of applying concat to the result of applying map
+;;   to f and colls.  Thus function f should return a collection."
+;;   [f & colls]
+;;   (apply concat (apply map f colls)))
 
-(defn take-while
-  "Returns a lazy seq of successive items from coll while
-  (pred item) returns true. pred must be free of side-effects."
-  [pred coll]
-  (when (and (seq coll) (pred (first coll)))
-    (lazy-cons (first coll) (take-while pred (rest coll)))))
+;; (defn filter
+;;   "Returns a lazy seq of the items in coll for which
+;;   (pred item) returns true. pred must be free of side-effects."
+;;   [pred coll]
+;;   (when (seq coll)
+;;     (if (pred (first coll))
+;;       (lazy-cons (first coll) (filter pred (rest coll)))
+;;       (recur pred (rest coll)))))
 
-(defn drop
-  "Returns a lazy seq of all but the first n items in coll."
-  [n coll]
-  (if (and (pos? n) (seq coll))
-    (recur (dec n) (rest coll))
-    (seq coll)))
+;; (defn take
+;;   "Returns a lazy seq of the first n items in coll, or all items if
+;;   there are fewer than n."  
+;;   [n coll]
+;;   (when (and (pos? n) (seq coll))
+;;     (lazy-cons (first coll) (take (dec n) (rest coll)))))
 
-(defn drop-last
-  "Return a lazy seq of all but the last n (default 1) items in coll"
-  ([s] (drop-last 1 s))
-  ([n s] (map (fn [x _] x) (seq s) (drop n s))))
+;; (defn take-while
+;;   "Returns a lazy seq of successive items from coll while
+;;   (pred item) returns true. pred must be free of side-effects."
+;;   [pred coll]
+;;   (when (and (seq coll) (pred (first coll)))
+;;     (lazy-cons (first coll) (take-while pred (rest coll)))))
 
-(defn drop-while
-  "Returns a lazy seq of the items in coll starting from the first
-  item for which (pred item) returns nil."
-  [pred coll]
-  (if (and (seq coll) (pred (first coll)))
-    (recur pred (rest coll))
-    (seq coll)))
+;; (defn drop
+;;   "Returns a lazy seq of all but the first n items in coll."
+;;   [n coll]
+;;   (if (and (pos? n) (seq coll))
+;;     (recur (dec n) (rest coll))
+;;     (seq coll)))
 
-(defn cycle
-  "Returns a lazy (infinite!) seq of repetitions of the items in
-  coll."  
-  [coll]
-  (when (seq coll)
-    (let [rep (fn thisfn [xs]
-		(if xs
-		  (lazy-cons (first xs) (thisfn (rest xs)))
-		  (recur (seq coll))))]
-      (rep (seq coll)))))
+;; (defn drop-last
+;;   "Return a lazy seq of all but the last n (default 1) items in coll"
+;;   ([s] (drop-last 1 s))
+;;   ([n s] (map (fn [x _] x) (seq s) (drop n s))))
 
-(defn split-at
-  "Returns a vector of [(take n coll) (drop n coll)]"
-  [n coll]
-  [(take n coll) (drop n coll)])
+;; (defn drop-while
+;;   "Returns a lazy seq of the items in coll starting from the first
+;;   item for which (pred item) returns nil."
+;;   [pred coll]
+;;   (if (and (seq coll) (pred (first coll)))
+;;     (recur pred (rest coll))
+;;     (seq coll)))
 
-(defn split-with
-  "Returns a vector of [(take-while pred coll) (drop-while pred coll)]"
-  [pred coll]
-  [(take-while pred coll) (drop-while pred coll)])
+;; (defn cycle
+;;   "Returns a lazy (infinite!) seq of repetitions of the items in
+;;   coll."  
+;;   [coll]
+;;   (when (seq coll)
+;;     (let [rep (fn thisfn [xs]
+;; 		(if xs
+;; 		  (lazy-cons (first xs) (thisfn (rest xs)))
+;; 		  (recur (seq coll))))]
+;;       (rep (seq coll)))))
 
-(defn repeat
-  "Returns a lazy (infinite!) seq of xs."
-  [x] (lazy-cons x (repeat x)))
+;; (defn split-at
+;;   "Returns a vector of [(take n coll) (drop n coll)]"
+;;   [n coll]
+;;   [(take n coll) (drop n coll)])
 
-(defn replicate
-  "Returns a lazy seq of n xs."
-  [n x] (take n (repeat x)))
+;; (defn split-with
+;;   "Returns a vector of [(take-while pred coll) (drop-while pred coll)]"
+;;   [pred coll]
+;;   [(take-while pred coll) (drop-while pred coll)])
+
+;; (defn repeat
+;;   "Returns a lazy (infinite!) seq of xs."
+;;   [x] (lazy-cons x (repeat x)))
+
+;; (defn replicate
+;;   "Returns a lazy seq of n xs."
+;;   [n x] (take n (repeat x)))
   
-(defn iterate
-  "Returns a lazy seq of x, (f x), (f (f x)) etc. f must be free of side-effects"
-  [f x] (lazy-cons x (iterate f (f x))))
+;; (defn iterate
+;;   "Returns a lazy seq of x, (f x), (f (f x)) etc. f must be free of side-effects"
+;;   [f x] (lazy-cons x (iterate f (f x))))
 
-(defn range
-  "Returns a lazy seq of nums from start (inclusive) to end
-  (exclusive), by step, where start defaults to 0 and step to 1."
-  ([end] (if (> end 0)
-           (new com.las3r.runtime.Range 0 end)
-           (take end (iterate inc 0))))
-  ([start end] (if (< start end)
-                 (new com.las3r.runtime.Range start end)
-                 (take (- end start) (iterate inc start))))
-  ([start end step]
-     (take-while (partial (if (pos? step) > <) end) (iterate (partial + step) start))))
-
-
-(defn merge
-  "Returns a map that consists of the rest of the maps conj-ed onto
-  the first.  If a key occurs in more than one map, the mapping from
-  the latter (left-to-right) will be the mapping in the result."
-  [& maps] (reduce conj maps))
+;; (defn range
+;;   "Returns a lazy seq of nums from start (inclusive) to end
+;;   (exclusive), by step, where start defaults to 0 and step to 1."
+;;   ([end] (if (> end 0)
+;;            (new com.las3r.runtime.Range 0 end)
+;;            (take end (iterate inc 0))))
+;;   ([start end] (if (< start end)
+;;                  (new com.las3r.runtime.Range start end)
+;;                  (take (- end start) (iterate inc start))))
+;;   ([start end step]
+;;      (take-while (partial (if (pos? step) > <) end) (iterate (partial + step) start))))
 
 
-(defn merge-with
-  "Returns a map that consists of the rest of the maps conj-ed onto
-  the first.  If a key occurs in more than one map, the mapping(s)
-  from the latter (left-to-right) will be combined with the mapping in
-  the result by calling (f val-in-result val-in-latter)."
-  [f & maps]
-  (let [merge-entry (fn [m e]
-		      (let [k (key e) v (val e)]
-			(if (contains? m k)
-			  (assoc m k (f (m k) v))
-			  (assoc m k v))))
-	merge2 (fn [m1 m2]
-		 (reduce merge-entry m1 (seq m2)))]
-    (reduce merge2 maps)))
+;; (defn merge
+;;   "Returns a map that consists of the rest of the maps conj-ed onto
+;;   the first.  If a key occurs in more than one map, the mapping from
+;;   the latter (left-to-right) will be the mapping in the result."
+;;   [& maps] (reduce conj maps))
+
+
+;; (defn merge-with
+;;   "Returns a map that consists of the rest of the maps conj-ed onto
+;;   the first.  If a key occurs in more than one map, the mapping(s)
+;;   from the latter (left-to-right) will be combined with the mapping in
+;;   the result by calling (f val-in-result val-in-latter)."
+;;   [f & maps]
+;;   (let [merge-entry (fn [m e]
+;; 		      (let [k (key e) v (val e)]
+;; 			(if (contains? m k)
+;; 			  (assoc m k (f (m k) v))
+;; 			  (assoc m k v))))
+;; 	merge2 (fn [m1 m2]
+;; 		 (reduce merge-entry m1 (seq m2)))]
+;;     (reduce merge2 maps)))
 
 
 
 
-(defn zipmap
-  "Returns a map with the keys mapped to the corresponding vals."
-  [keys vals]
-  (loop* [map {}
-	  ks (seq keys)
-	  vs (seq vals)]
-	 (if (and ks vs)
-	   (recur (assoc map (first ks) (first vs))
-		  (rest ks)
-		  (rest vs))
-	   map)))
+;; (defn zipmap
+;;   "Returns a map with the keys mapped to the corresponding vals."
+;;   [keys vals]
+;;   (loop* [map {}
+;; 	  ks (seq keys)
+;; 	  vs (seq vals)]
+;; 	 (if (and ks vs)
+;; 	   (recur (assoc map (first ks) (first vs))
+;; 		  (rest ks)
+;; 		  (rest vs))
+;; 	   map)))
 
 
-(defn line-seq
-  "Returns the lines of text from rdr as a lazy sequence of strings.
-  rdr must implement java.io.BufferedReader."
-  [#^com.las3r.jdk.io.BufferedReader rdr]
-  (let [line  (. rdr (readLine))]
-    (when line
-      (lazy-cons line (line-seq rdr)))))
+;; (defn line-seq
+;;   "Returns the lines of text from rdr as a lazy sequence of strings.
+;;   rdr must implement java.io.BufferedReader."
+;;   [#^com.las3r.jdk.io.BufferedReader rdr]
+;;   (let [line  (. rdr (readLine))]
+;;     (when line
+;;       (lazy-cons line (line-seq rdr)))))
+
 
 (defn eval
-  "Evaluates the code (which should be provided as a string) and calls
-  back with the result if callback is provided. In case of an error during
-  evaluation err-callback will be called with the error object as an
-  argument. The progress callback will be invoked before the evaluation of
-  each top level form in the code."
-  ([code] (. *runtime* (evalStr code)))
-  ([code callback] (. *runtime* (evalStr code callback)))
-  ([code callback err-callback] (. *runtime* (evalStr code callback nil err-callback)))
-  ([code callback err-callback progress] (. *runtime* (evalStr code callback progress err-callback))))
+  "Evaluates the form data structure (provided as a string!) and calls back with the result
+   if callback is provided."
+  ([form] (. *runtime* (evalStr form)))
+  ([form callback] (. *runtime* (evalStr form callback)))
+  ([form callback err-callback] (. *runtime* (evalStr form callback nil err-callback)))
+  ([form callback err-callback progress] (. *runtime* (evalStr form callback progress err-callback))))
 
-(defmacro doseq
-  "Repeatedly executes body (presumably for side-effects) with
-  binding-form bound to successive items from coll.  Does not retain
-  the head of the sequence. Returns nil."
-  [item list & body]
-  `(loop* [list# (seq ~list)]
-	  (when list#
-	    (let [~item (first list#)]
-	      ~@body)
-	    (recur (rest list#)))))
+;; (defmacro doseq
+;;   "Repeatedly executes body (presumably for side-effects) with
+;;   binding-form bound to successive items from coll.  Does not retain
+;;   the head of the sequence. Returns nil."
+;;   [item list & body]
+;;   `(loop* [list# (seq ~list)]
+;; 	  (when list#
+;; 	    (let [~item (first list#)]
+;; 	      ~@body)
+;; 	    (recur (rest list#)))))
 
-(defn dorun
-  "When lazy sequences are produced via functions that have side
-  effects, any effects other than those needed to produce the first
-  element in the seq do not occur until the seq is consumed. dorun can
-  be used to force any effects. Walks through the successive rests of
-  the seq, does not retain the head and returns nil."
-  ([coll]
-     (when (and (seq coll) (or (first coll) true))
-       (recur (rest coll))))
-  ([n coll]
-     (when (and (seq coll) (pos? n) (or (first coll) true))
-       (recur (dec n) (rest coll)))))
+;; (defn dorun
+;;   "When lazy sequences are produced via functions that have side
+;;   effects, any effects other than those needed to produce the first
+;;   element in the seq do not occur until the seq is consumed. dorun can
+;;   be used to force any effects. Walks through the successive rests of
+;;   the seq, does not retain the head and returns nil."
+;;   ([coll]
+;;      (when (and (seq coll) (or (first coll) true))
+;;        (recur (rest coll))))
+;;   ([n coll]
+;;      (when (and (seq coll) (pos? n) (or (first coll) true))
+;;        (recur (dec n) (rest coll)))))
 
-(defn doall
-  "When lazy sequences are produced via functions that have side
-  effects, any effects other than those needed to produce the first
-  element in the seq do not occur until the seq is consumed. doall can
-  be used to force any effects. Walks through the successive rests of
-  the seq, retains the head and returns it, thus causing the entire
-  seq to reside in memory at one time."
-  ([coll]
-     (dorun coll)
-     coll)
-  ([n coll]
-     (dorun n coll)
-     coll))
+;; (defn doall
+;;   "When lazy sequences are produced via functions that have side
+;;   effects, any effects other than those needed to produce the first
+;;   element in the seq do not occur until the seq is consumed. doall can
+;;   be used to force any effects. Walks through the successive rests of
+;;   the seq, retains the head and returns it, thus causing the entire
+;;   seq to reside in memory at one time."
+;;   ([coll]
+;;      (dorun coll)
+;;      coll)
+;;   ([n coll]
+;;      (dorun n coll)
+;;      coll))
 
-(defmacro dotimes
-  "Repeatedly executes body (presumably for side-effects) with name
-  bound to integers from 0 through n-1."
-  [i n & body]
-  `(let [n# ~n]
-     (loop* [~i 0]
-	    (when (< ~i n#)
-	      ~@body
-	      (recur (inc ~i))))))
+;; (defmacro dotimes
+;;   "Repeatedly executes body (presumably for side-effects) with name
+;;   bound to integers from 0 through n-1."
+;;   [i n & body]
+;;   `(let [n# ~n]
+;;      (loop* [~i 0]
+;; 	    (when (< ~i n#)
+;; 	      ~@body
+;; 	      (recur (inc ~i))))))
 
 
-(defn import
-  "import-list => (package-symbol class-name-symbols*)
+;; (defn import
+;;   "import-list => (package-symbol class-name-symbols*)
 
-  For each name in class-name-symbols, adds a mapping from name to the
-  class named by package.name to the current namespace. Use :import in the ns
-  macro in preference to calling this directly."
-  [& import-lists]
-  (when import-lists
-    (let [#^com.las3r.runtime.LispNamespace ns *ns*
-	  pkg (ffirst import-lists)
-	  classes (rfirst import-lists)]
+;;   For each name in class-name-symbols, adds a mapping from name to the
+;;   class named by package.name to the current namespace. Use :import in the ns
+;;   macro in preference to calling this directly."
+;;   [& import-lists]
+;;   (when import-lists
+;;     (let [#^com.las3r.runtime.LispNamespace ns *ns*
+;; 	  pkg (ffirst import-lists)
+;; 	  classes (rfirst import-lists)]
       
-      (doseq c classes
-	(. ns (importClass c (. com.las3r.runtime.RT (classForName (str pkg "." c)))))))
-    (apply import (rest import-lists))))
+;;       (doseq c classes
+;; 	(. ns (importClass c (. com.las3r.runtime.RT (classForName (str pkg "." c)))))))
+;;     (apply import (rest import-lists))))
 
 
-(defn into
-  "Returns a new coll consisting of to-coll with all of the items of
-  from-coll conjoined."
-  [to from]
-  (let [ret to items (seq from)]
-    (if items
-      (recur (conj ret (first items)) (rest items))
-      ret)))
+;; (defn into
+;;   "Returns a new coll consisting of to-coll with all of the items of
+;;   from-coll conjoined."
+;;   [to from]
+;;   (let [ret to items (seq from)]
+;;     (if items
+;;       (recur (conj ret (first items)) (rest items))
+;;       ret)))
 
-(defn #^Class class
-  "Returns the Class of x"
-  [#^Object x] (if (nil? x) x (. com.las3r.runtime.RT (classForInstance x))))
+;; (defn #^Class class
+;;   "Returns the Class of x"
+;;   [#^Object x] (if (nil? x) x (. com.las3r.runtime.RT (classForInstance x))))
 
-(defn number?
-  "Returns true if x is a Number"
-  [x]
-  (instance? Number x))
+;; (defn number?
+;;   "Returns true if x is a Number"
+;;   [x]
+;;   (instance? Number x))
 
-(defn mod
-  "Modulus of num and div. Truncates toward negative infinity."
-  [num div] 
-  (let [m (rem num div)] 
-    (if (or (zero? m) (= (pos? num) (pos? div))) 
-      m 
-      (+ m div))))
+;; (defn mod
+;;   "Modulus of num and div. Truncates toward negative infinity."
+;;   [num div] 
+;;   (let [m (rem num div)] 
+;;     (if (or (zero? m) (= (pos? num) (pos? div))) 
+;;       m 
+;;       (+ m div))))
 
-(defn vec
-  "Creates a new vector containing the contents of coll."
-  [coll]
-  (into [] (seq coll)))
+;; (defn vec
+;;   "Creates a new vector containing the contents of coll."
+;;   [coll]
+;;   (into [] (seq coll)))
 
 
 
-;;;;;;;;;;;; regex ;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;; regex ;;;;;;;;;;;;;;;;;
 
-(defn re
-  "Given a string and an optional string of flag characters, 
-   return an instance of RegExp, for use, e.g. in re-match."
-  {:tag RegExp}
-  ([s] (re s ""))
-  ([s flags] (new RegExp s flags)))
+;; (defn re
+;;   "Given a string and an optional string of flag characters, 
+;;    return an instance of RegExp, for use, e.g. in re-match."
+;;   {:tag RegExp}
+;;   ([s] (re s ""))
+;;   ([s flags] (new RegExp s flags)))
   
 
-(defn re-match
-  "Apply r to str one time. If r is not found in str, return nil.
-   Otherwise, return a vector of matched groups, where nth(0) is
-   the entire match."
-  [#^RegExp r #^String s]
-  (let [m (. r (exec s))]
-    (if (nil? m) nil
-	(vec m))))
-;;(re-match (re "a(b)") "ababababababa")
+;; (defn re-match
+;;   "Apply r to str one time. If r is not found in str, return nil.
+;;    Otherwise, return a vector of matched groups, where nth(0) is
+;;    the entire match."
+;;   [#^RegExp r #^String s]
+;;   (let [m (. r (exec s))]
+;;     (if (nil? m) nil
+;; 	(vec m))))
+;; ;;(re-match (re "a(b)") "ababababababa")
 
 
-(defn re-matches
-  "Returns a lazy sequence of successive matches of pattern in string.
-   Each match is processed with re-match. If no matches are found, result
-   is nil."
-  [#^RegExp r s]
-  (when-not (. r global) (throw-rte "RegExp supplied to re-matches must have global flag set."))
-  ((fn step []
-     (let [m (. r (exec s))]
-       (when m
-	 (lazy-cons (vec m) (step)))))))
-;;(take 8 (re-matches (re "a(b)" "g") "ababababababa"))
+;; (defn re-matches
+;;   "Returns a lazy sequence of successive matches of pattern in string.
+;;    Each match is processed with re-match. If no matches are found, result
+;;    is nil."
+;;   [#^RegExp r s]
+;;   (when-not (. r global) (throw-rte "RegExp supplied to re-matches must have global flag set."))
+;;   ((fn step []
+;;      (let [m (. r (exec s))]
+;;        (when m
+;; 	 (lazy-cons (vec m) (step)))))))
+;; ;;(take 8 (re-matches (re "a(b)" "g") "ababababababa"))
 
 
-(defn macroexpand-1
-  "If form represents a macro form, returns its expansion,
-  else returns form."
-  [form]
-  (. (. *runtime* compiler) (macroexpand1 form)))
+;; (defn macroexpand-1
+;;   "If form represents a macro form, returns its expansion,
+;;   else returns form."
+;;   [form]
+;;   (. (. *runtime* compiler) (macroexpand1 form)))
 
 
 
-(defn macroexpand
-  "Repeatedly calls macroexpand-1 on form until it no longer
-  represents a macro form, then returns it.  Note neither
-  macroexpand-1 nor macroexpand expand macros in subforms."
-  [form]
-  (let [ex (macroexpand-1 form)]
-    (if (identical? ex form)
-      form
-      (macroexpand ex))))
+;; (defn macroexpand
+;;   "Repeatedly calls macroexpand-1 on form until it no longer
+;;   represents a macro form, then returns it.  Note neither
+;;   macroexpand-1 nor macroexpand expand macros in subforms."
+;;   [form]
+;;   (let [ex (macroexpand-1 form)]
+;;     (if (identical? ex form)
+;;       form
+;;       (macroexpand ex))))
 
 
-(defn create-struct
-  "Returns a structure basis object."
-  [& keys]
-  (. com.las3r.runtime.PersistentStructMap (createSlotMap keys)))
+;; (defn create-struct
+;;   "Returns a structure basis object."
+;;   [& keys]
+;;   (. com.las3r.runtime.PersistentStructMap (createSlotMap keys)))
  
-(defmacro defstruct
-  "Same as (def name (create-struct keys...))"
-  [name & keys]
-  `(def ~name (create-struct ~@keys)))
+;; (defmacro defstruct
+;;   "Same as (def name (create-struct keys...))"
+;;   [name & keys]
+;;   `(def ~name (create-struct ~@keys)))
   
-(defn struct-map
-  "Returns a new structmap instance with the keys of the
-  structure-basis. keyvals may contain all, some or none of the basis
-  keys - where values are not supplied they will default to nil.
-  keyvals can also contain keys not in the basis."
-  [s & inits]
-  (. com.las3r.runtime.PersistentStructMap (create s inits)))
-
-(defn struct
-  "Returns a new structmap instance with the keys of the
-  structure-basis. vals must be supplied for basis keys in order -
-  where values are not supplied they will default to nil."
-  [s & vals]
-  (. com.las3r.runtime.PersistentStructMap (construct s vals)))
-
-(defn accessor
-  "Returns a fn that, given an instance of a structmap with the basis,
-  returns the value at the key.  The key must be in the basis. The
-  returned function should be (slightly) more efficient than using
-  get, but such use of accessors should be limited to known
-  performance-critical areas."
-  [s key]
-  (. com.las3r.runtime.PersistentStructMap (getAccessor s key)))
-
-(defn subvec
-  "Returns a persistent vector of the items in vector from
-  start (inclusive) to end (exclusive).  If end is not supplied,
-  defaults to (count vector). This operation is O(1) and very fast, as
-  the resulting vector shares structure with the original and no
-  trimming is done."
-  ([v start]
-     (subvec v start (count v)))
-  ([v start end]
-     (. com.las3r.runtime.RT (subvec v start end))))
-
-
-(defn #^{:private true}
-  filter-key [keyfn pred amap]
-  (loop* [ret {} es (seq amap)]
-	 (if es
-	   (if (pred (keyfn (first es)))
-	     (recur (assoc ret (key (first es)) (val (first es))) (rest es))
-	     (recur ret (rest es)))
-	   ret)))
-
-
-(defmacro time
-  "Evaluates expr and prints the time it took.  Returns the value of
-   expr."  
-  [expr]
-  `(let [start# (. com.las3r.runtime.RT (sysTime))
-	 ret# ~expr]
-     (prn (str "Elapsed time: " (- (. com.las3r.runtime.RT (sysTime)) start#) " msecs"))
-     ret#))
-
-(defn set 
-  "Returns a set of the distinct elements of coll."
-  [coll] (apply hash-set coll))
-
-(defn find-ns
-  "Returns the namespace named by the symbol or nil if it doesn't exist."
-  [sym] (. com.las3r.runtime.LispNamespace (find *runtime* sym)))
-
-
-(defn create-ns
-  "Create a new namespace named by the symbol if one doesn't already
-  exist, returns it or the already-existing namespace of the same
-  name."
-  [sym] (. com.las3r.runtime.LispNamespace (findOrCreate *runtime* sym)))
-
-
-(defn remove-ns
-  "Removes the namespace named by the symbol. Use with caution.
-  Cannot be used to remove the clojure namespace."
-  [sym] (. com.las3r.runtime.LispNamespace (remove *runtime* sym)))
-
-
-(defn all-ns
-  "Returns a sequence of all namespaces."
-  [] (. com.las3r.runtime.LispNamespace (all *runtime*)))
-
-
-(defn ns-name
-  "Returns the name of the namespace, a symbol."
-  [#^com.las3r.runtime.LispNamespace ns]
-  (. ns (getName)))
-
-
-(defn ns-map
-  "Returns a map of all the mappings for the namespace."
-  [#^com.las3r.runtime.LispNamespace ns]
-  (. ns (getMappings)))
-
-
-(defn ns-unmap
-  "Removes the mappings for the symbol from the namespace."
-  [#^com.las3r.runtime.LispNamespace ns sym]
-  (. ns (unmap sym)))
-
-(defn ns-publics
-  "Returns a map of the public intern mappings for the namespace."
-  [#^com.las3r.runtime.LispNamespace ns]
-  (filter-key val (fn [#^com.las3r.runtime.Var v] (and (instance? com.las3r.runtime.Var v)
-						       (= ns (. v ns))
-						       (. v (isPublic))))
-	      (ns-map ns)))
-
-(defn ns-imports
-  "Returns a map of the import mappings for the namespace."
-  [#^com.las3r.runtime.LispNamespace ns]
-  (filter-key val (partial instance? Class) (ns-map ns)))
-
-
-(defn refer
-  "refers to all public vars of ns, subject to filters.
-  filters can include at most one each of:
-
-  :exclude list-of-symbols
-  :only list-of-symbols
-  :rename map-of-fromsymbol-tosymbol
-
-  For each public interned var in the namespace named by the symbol,
-  adds a mapping from the name of the var to the var to the current
-  namespace.  Throws an exception if name is already mapped to
-  something else in the current namespace. Filters can be used to
-  select a subset, via inclusion or exclusion, or to provide a mapping
-  to a symbol different from the var's name, in order to prevent
-  clashes. Use :use in the ns macro in preference to calling this directly."
-  [ns-sym & filters]
-  (let [ns (or (find-ns ns-sym) (throw (new Error (str "No namespace: " ns-sym))))
-	fs (apply hash-map filters)
-	nspublics (ns-publics ns)
-	rename (or (get fs :rename) {})
-	exclude (apply hash-set (get fs :exclude))
-	to-do (or (get fs :only) (keys nspublics))]
-    (doseq sym to-do
-      (when-not (contains? exclude sym)
-	(let [v (get nspublics sym)]
-	  (when-not v
-	    (throw (new Error (str sym " is not public"))))
-	  (. *ns* (refer (or (get rename sym) sym) v)))))))
-
-(defn ns-refers
-  "Returns a map of the refer mappings for the namespace."
-  [#^com.las3r.runtime.Namespace ns]
-  (filter-key val (fn [#^com.las3r.runtime.Var v] (and (instance? com.las3r.runtime.Var v)
-						       (not= ns (. v ns))))
-	      (ns-map ns)))
-
-(defn ns-interns
-  "Returns a map of the intern mappings for the namespace."
-  [#^com.las3r.runtime.Namespace ns]
-  (filter-key val (fn [#^com.las3r.runtime.Var v] (and (instance? com.las3r.runtime.Var v)
-						       (= ns (. v ns))))
-	      (ns-map ns)))
-
-
-(defn alias
-  "Add an alias in the current namespace to another
-  namespace. Arguments are two symbols: the alias to be used, and
-  the symbolic name of the target namespace. Use :as in the ns macro in preference 
-  to calling this directly."
-  [alias namespace-sym]
-  (. *ns* (addAlias alias (find-ns namespace-sym))))
-
-(defn ns-aliases
-  "Returns a map of the aliases for the namespace."
-  [#^com.las3r.runtime.LispNamespace ns]  (. ns (getAliases)))
-
-(defn ns-unalias
-  "Removes the alias for the symbol from the namespace."
-  [#^com.las3r.runtime.LispNamespace ns sym]
-  (. ns (removeAlias sym)))
-
-(defn take-nth
-  "Returns a lazy seq of every nth item in coll."
-  [n coll]
-  (when (seq coll)
-    (lazy-cons (first coll) (take-nth n (drop n coll)))))
-
-(defn interleave
-  "Returns a lazy seq of the first item in each coll, then the second
-  etc."
-  [& colls]
-  (apply concat (apply map list colls)))
-
-
-(defn nthrest
-  "Returns the nth rest of coll, (seq coll) when n is 0."
-  [coll n]
-  (loop* [n n xs (seq coll)]
-	 (if (and xs (pos? n))
-	   (recur (dec n) (rest xs))
-	   xs)))
-
-(defn var-get
-  "Gets the value in the var object"
-  [#^com.las3r.runtime.Var x] (. x (get)))
-
-(defn var-set
-  "Sets the value in the var object to val. The var must be
- thread-locally bound."  
-  [#^com.las3r.runtime.Var x val] (. x (set val)))
-
-(defmacro with-local-vars
-  "varbinding=> symbol init-expr
-
-  Executes the exprs in a context in which the symbols are bound to
-  vars with per-thread bindings to the init-exprs.  The symbols refer
-  to the var objects themselves, and must be accessed with var-get and
-  var-set"
-  [name-vals-vec & body]
-  `(let [~@(interleave (take-nth 2 name-vals-vec)
-		       (repeat '(. com.las3r.runtime.Var (create *runtime*))))]
-     (. com.las3r.runtime.Var (pushThreadBindings *runtime* (hash-map ~@name-vals-vec)))
-     (try
-      ~@body
-      (finally (. com.las3r.runtime.Var (popThreadBindings *runtime*))))))
-
-(defmacro doto
-  "Evaluates x then calls all of the methods with the supplied
-  arguments in succession on the resulting object, returning it.
-
-  (doto (new java.util.HashMap) (put \"a\" 1) (put \"b\" 2))"
-  [x & members]
-  (let [gx (gensym)]
-    `(let [~gx ~x]
-       (do
-	 ~@(map (fn [m] (list '. gx m))
-		members))
-       ~gx)))
-
-(defmacro memfn
-  "Expands into code that creates a fn that expects to be passed an
-  object and any args and calls the named instance method on the
-  object passing the args. Use when you want to treat a Java method as
-  a first-class fn."
-  [name & args]
-  `(fn [target# ~@args]
-     (. target# (~name ~@args))))
-
-(defmacro ..
-  "form => fieldName-symbol or (instanceMethodName-symbol args*)
-
-  Expands into a member access (.) of the first member on the first
-  argument, followed by the next member on the result, etc. For
-  instance:
-
-  (.. System (getProperties) (get \"os.name\"))
-
-  expands to:
-
-  (. (. System (getProperties)) (get \"os.name\"))
-
-  but is easier to write, read, and understand."
-  ([x form] `(. ~x ~form))
-  ([x form & more] `(.. (. ~x ~form) ~@more)))
-
-(defmacro ->
-  "Macro. Threads the expr through the forms. Inserts x as the
-  second item in the first form, making a list of it if it is not a
-  list already. If there are more forms, inserts the first form as the
-  second item in second form, etc."
-  ([x form] (if (seq? form)
-	      `(~(first form) ~x ~@(rest form))
-	      (list form x)))
-  ([x form & more] `(-> (-> ~x ~form) ~@more)))
-
-(defn symbol?
-  "Return true if x is a Symbol"
-  [x] (instance? com.las3r.runtime.Symbol x))
-
-
-(defn keyword?
-  "Return true if x is a Keyword"
-  [x] (instance? com.las3r.runtime.Keyword x))
-
-
-(defn num
-  "Coerce to Number"
-  {:tag Number}
-  [x] (. com.las3r.runtime.RT (numCast x)))
-
-
-(defn int
-  "Coerce to int"
-  [x] (. com.las3r.runtime.RT (intCast x)))
-
-
-(defn rand
-  "Returns a random floating point number between 0 (inclusive) and
-  1 (exclusive)."
-  ([] (. Math (random)))
-  ([n] (* n (rand))))
-
-(defn rand-int
-  "Returns a random integer between 0 (inclusive) and n (exclusive)."
-  [n] (int (rand n)))
-
-(defmacro defn-
-  "same as defn, yielding non-public def"
-  [name & decls]
-  (list* `defn (with-meta name (assoc (or (meta name) {}) :private true)) decls))
-
-
-
-
-(defn destructure [bindings]
-  (let [bmap (apply array-map bindings)
-	pb (fn pb [bvec b v]
-	     (let [pvec
-		   (fn [bvec b val]
-		     (let [gvec (gensym "vec__")]
-		       (loop* [ret (-> bvec (conj gvec) (conj val))
-			       n 0
-			       bs b
-			       seen-rest? false]
-			      (if (seq bs)
-				(let [firstb (first bs)]
-				  (cond
-				   (= firstb '&) (recur (pb ret (second bs) (list `nthrest gvec n))
-							n
-							(rrest bs)
-							true)
-				   (= firstb :as) (pb ret (second bs) gvec)
-				   :else (if seen-rest?
-					   (throw (new Error "Unsupported binding form, only :as can follow & parameter"))
-					   (recur (pb ret firstb  (list `nth gvec n nil))
-						  (inc n)
-						  (rest bs)
-						  seen-rest?))))
-				ret))))
-		   pmap
-		   (fn pmap [bvec b v]
-		     (let [gmap (or (get b :as) (gensym "map__"))
-			   defaults (get b :or)]
-		       (loop* [ret (-> bvec (conj gmap) (conj v))
-			       bes (reduce
-				    (fn [bes entry]
-				      (reduce (fn [a b] (assoc a b (get b (val entry))))
-					      (dissoc bes (key entry))
-					      (get bes (key entry))))
-				    (dissoc b :as :or)
-				    {:keys (fn [a] (keyword (str a))), :strs str, :syms (fn [a] (list `quote a))})]
-			      (if (seq bes)
-				(let [bb (key (first bes))
-				      bk (val (first bes))
-				      has-default (contains? defaults bb)]
-				  (recur (pb ret bb (if has-default
-						      (list `get gmap bk (get defaults bb))
-						      (list `get gmap bk)))
-					 (rest bes)))
-				ret)
-			      )))]
-	       (cond
-		(symbol? b) (-> bvec (conj b) (conj v))
-		(vector? b) (pvec bvec b v)
-		(map? b) (pmap bvec b v)
-		:else (throw (new Error (str "Unsupported binding form: " b))))))
-	process-entry (fn [bvec b] (pb bvec (key b) (val b)))]
-    (if (every? symbol? (keys bmap))
-      bindings
-      (reduce process-entry [] bmap))))
-;; (try (destructure '[{a :a} {:a 1}]) (catch Error e (. e (getStackTrace))))
-;; {:a}
-
-
-;; (let [[a b c] [1 2 3]] a)
-;; (let [[a b c & d] [1 2 3 4 5 6 7]] d)
-(defmacro let
-  "Evaluates the exprs in a lexical context in which the symbols in
-  the binding-forms are bound to their respective init-exprs or parts
-  therein."
-  [bindings & body]
-  (when (odd? (count bindings))
-    (throw (new Error "Odd number of elements in let bindings")))
-  `(let* ~(destructure bindings) ~@body))
-
-;; ((fn [[x y z] a b c & d] x) [1 2 3] 2 3 4 5 6 7)
-(defmacro fn
-  "(fn name? [params* ] exprs*)
-  (fn name? ([params* ] exprs*)+)
-
-  params => positional-params* , or positional-params* & rest-param
-  positional-param => binding-form
-  rest-param => binding-form
-  name => symbol
-
-  Defines a function"
-  [& sigs]
-  (let [name (if (symbol? (first sigs)) (first sigs) nil)
-	sigs (if name (rest sigs) sigs)
-	sigs (if (vector? (first sigs)) (list sigs) sigs)
-	psig (fn [sig]
-	       (let [[params & body] sig]
-		 (if (every? symbol? params)
-		   sig
-		   (loop* [params params
-			   new-params []
-			   lets []]
-			  (if params
-			    (if (symbol? (first params))
-			      (recur (rest params) (conj new-params (first params)) lets)
-			      (let [gparam (gensym "p__")]
-				(recur (rest params) (conj new-params gparam) 
-				       (-> lets (conj (first params)) (conj gparam)))))
-			    `(~new-params
-			      (let ~lets
-				~@body)))))))
-	new-sigs (map psig sigs)]
-    (with-meta
-     (if name
-       (list* 'fn* name new-sigs)
-       (cons 'fn* new-sigs))
-     {} ;;*macro-meta*
-     )))
-
-
-(defmacro loop
-  "Evaluates the exprs in a lexical context in which the symbols in
-  the binding-forms are bound to their respective init-exprs or parts
-  therein. Acts as a recur target."
-  [bindings & body]
-  (let [db (destructure bindings)]
-    (if (= db bindings)
-      `(loop* ~bindings ~@body)
-      (let [vs (take-nth 2 (drop 1 bindings))
-	    bs (take-nth 2 bindings)
-	    gs (map (fn [b] (if (symbol? b) b (gensym))) bs)
-	    bfs (reduce (fn [ret [b v g]]
-			  (if (symbol? b)
-			    (conj ret g v)
-			    (conj ret g v b g)))
-			[] (map vector bs vs gs))]
-	`(let ~bfs
-	   (loop* ~(vec (interleave gs gs))
-		  (let ~(vec (interleave bs gs))
-		    ~@body)))))))
-
-(defmacro when-first
-  "bindings => x xs
-
-  Same as (when (seq xs) (let [x (first xs)] body))"
-  [bindings & body]
-  (if (vector? bindings)
-    (let [[x xs] bindings]
-      `(when (seq ~xs)
-	 (let [~x (first ~xs)]
-	   ~@body)))
-    (throw (new Error
-		"when-first now requires a vector for its binding"))))
-
-(defmacro lazy-cat
-  "Expands to code which yields a lazy sequence of the concatenation
-  of the supplied colls.  Each coll expr is not evaluated until it is
-  needed."
-  ([coll] `(seq ~coll))
-  ([coll & colls]
-     `(let [iter# (fn iter# [coll#]
-		    (if (seq coll#)
-		      (lazy-cons (first coll#) (iter# (rest coll#)))
-		      (lazy-cat ~@colls)))]
-	(iter# ~coll))))
-
-
-(defmacro for
-  "List comprehension. Takes a vector of one or more
- binding-form/collection-expr pairs, each followed by an optional filtering
- :when/:while expression (:when test or :while test), and yields a
- lazy sequence of evaluations of expr. Collections are iterated in a
- nested fashion, rightmost fastest, and nested coll-exprs can refer to
- bindings created in prior binding-forms.
- (take 100 (for [x (range 100000000) y (range 1000000) :while (< y x)]  [x y]))"
-  ([seq-exprs expr]
-     (let [pargs (fn [xs]
-		   (loop [ret []
-			  [b e & [w f & wr :as r] :as xs] (seq xs)]
-		     (if xs
-		       (cond 
-			(= w :when) (recur (conj ret {:b b :e e :f f :w :when}) wr)
-			(= w :while) (recur (conj ret {:b b :e e :f f :w :while}) wr)
-			:else (recur (conj ret {:b b :e e :f true :w :while}) r))
-		       (seq ret))))
+;; (defn struct-map
+;;   "Returns a new structmap instance with the keys of the
+;;   structure-basis. keyvals may contain all, some or none of the basis
+;;   keys - where values are not supplied they will default to nil.
+;;   keyvals can also contain keys not in the basis."
+;;   [s & inits]
+;;   (. com.las3r.runtime.PersistentStructMap (create s inits)))
+
+;; (defn struct
+;;   "Returns a new structmap instance with the keys of the
+;;   structure-basis. vals must be supplied for basis keys in order -
+;;   where values are not supplied they will default to nil."
+;;   [s & vals]
+;;   (. com.las3r.runtime.PersistentStructMap (construct s vals)))
+
+;; (defn accessor
+;;   "Returns a fn that, given an instance of a structmap with the basis,
+;;   returns the value at the key.  The key must be in the basis. The
+;;   returned function should be (slightly) more efficient than using
+;;   get, but such use of accessors should be limited to known
+;;   performance-critical areas."
+;;   [s key]
+;;   (. com.las3r.runtime.PersistentStructMap (getAccessor s key)))
+
+;; (defn subvec
+;;   "Returns a persistent vector of the items in vector from
+;;   start (inclusive) to end (exclusive).  If end is not supplied,
+;;   defaults to (count vector). This operation is O(1) and very fast, as
+;;   the resulting vector shares structure with the original and no
+;;   trimming is done."
+;;   ([v start]
+;;      (subvec v start (count v)))
+;;   ([v start end]
+;;      (. com.las3r.runtime.RT (subvec v start end))))
+
+
+;; (defn #^{:private true}
+;;   filter-key [keyfn pred amap]
+;;   (loop* [ret {} es (seq amap)]
+;; 	 (if es
+;; 	   (if (pred (keyfn (first es)))
+;; 	     (recur (assoc ret (key (first es)) (val (first es))) (rest es))
+;; 	     (recur ret (rest es)))
+;; 	   ret)))
+
+
+;; (defmacro time
+;;   "Evaluates expr and prints the time it took.  Returns the value of
+;;    expr."  
+;;   [expr]
+;;   `(let [start# (. com.las3r.runtime.RT (sysTime))
+;; 	 ret# ~expr]
+;;      (prn (str "Elapsed time: " (- (. com.las3r.runtime.RT (sysTime)) start#) " msecs"))
+;;      ret#))
+
+;; (defn set 
+;;   "Returns a set of the distinct elements of coll."
+;;   [coll] (apply hash-set coll))
+
+;; (defn find-ns
+;;   "Returns the namespace named by the symbol or nil if it doesn't exist."
+;;   [sym] (. com.las3r.runtime.LispNamespace (find *runtime* sym)))
+
+
+;; (defn create-ns
+;;   "Create a new namespace named by the symbol if one doesn't already
+;;   exist, returns it or the already-existing namespace of the same
+;;   name."
+;;   [sym] (. com.las3r.runtime.LispNamespace (findOrCreate *runtime* sym)))
+
+
+;; (defn remove-ns
+;;   "Removes the namespace named by the symbol. Use with caution.
+;;   Cannot be used to remove the clojure namespace."
+;;   [sym] (. com.las3r.runtime.LispNamespace (remove *runtime* sym)))
+
+
+;; (defn all-ns
+;;   "Returns a sequence of all namespaces."
+;;   [] (. com.las3r.runtime.LispNamespace (all *runtime*)))
+
+
+;; (defn ns-name
+;;   "Returns the name of the namespace, a symbol."
+;;   [#^com.las3r.runtime.LispNamespace ns]
+;;   (. ns (getName)))
+
+
+;; (defn ns-map
+;;   "Returns a map of all the mappings for the namespace."
+;;   [#^com.las3r.runtime.LispNamespace ns]
+;;   (. ns (getMappings)))
+
+
+;; (defn ns-unmap
+;;   "Removes the mappings for the symbol from the namespace."
+;;   [#^com.las3r.runtime.LispNamespace ns sym]
+;;   (. ns (unmap sym)))
+
+;; (defn ns-publics
+;;   "Returns a map of the public intern mappings for the namespace."
+;;   [#^com.las3r.runtime.LispNamespace ns]
+;;   (filter-key val (fn [#^com.las3r.runtime.Var v] (and (instance? com.las3r.runtime.Var v)
+;; 						       (= ns (. v ns))
+;; 						       (. v (isPublic))))
+;; 	      (ns-map ns)))
+
+;; (defn ns-imports
+;;   "Returns a map of the import mappings for the namespace."
+;;   [#^com.las3r.runtime.LispNamespace ns]
+;;   (filter-key val (partial instance? Class) (ns-map ns)))
+
+
+;; (defn refer
+;;   "refers to all public vars of ns, subject to filters.
+;;   filters can include at most one each of:
+
+;;   :exclude list-of-symbols
+;;   :only list-of-symbols
+;;   :rename map-of-fromsymbol-tosymbol
+
+;;   For each public interned var in the namespace named by the symbol,
+;;   adds a mapping from the name of the var to the var to the current
+;;   namespace.  Throws an exception if name is already mapped to
+;;   something else in the current namespace. Filters can be used to
+;;   select a subset, via inclusion or exclusion, or to provide a mapping
+;;   to a symbol different from the var's name, in order to prevent
+;;   clashes. Use :use in the ns macro in preference to calling this directly."
+;;   [ns-sym & filters]
+;;   (let [ns (or (find-ns ns-sym) (throw (new Error (str "No namespace: " ns-sym))))
+;; 	fs (apply hash-map filters)
+;; 	nspublics (ns-publics ns)
+;; 	rename (or (get fs :rename) {})
+;; 	exclude (apply hash-set (get fs :exclude))
+;; 	to-do (or (get fs :only) (keys nspublics))]
+;;     (doseq sym to-do
+;;       (when-not (contains? exclude sym)
+;; 	(let [v (get nspublics sym)]
+;; 	  (when-not v
+;; 	    (throw (new Error (str sym " is not public"))))
+;; 	  (. *ns* (refer (or (get rename sym) sym) v)))))))
+
+;; (defn ns-refers
+;;   "Returns a map of the refer mappings for the namespace."
+;;   [#^com.las3r.runtime.Namespace ns]
+;;   (filter-key val (fn [#^com.las3r.runtime.Var v] (and (instance? com.las3r.runtime.Var v)
+;; 						       (not= ns (. v ns))))
+;; 	      (ns-map ns)))
+
+;; (defn ns-interns
+;;   "Returns a map of the intern mappings for the namespace."
+;;   [#^com.las3r.runtime.Namespace ns]
+;;   (filter-key val (fn [#^com.las3r.runtime.Var v] (and (instance? com.las3r.runtime.Var v)
+;; 						       (= ns (. v ns))))
+;; 	      (ns-map ns)))
+
+
+;; (defn alias
+;;   "Add an alias in the current namespace to another
+;;   namespace. Arguments are two symbols: the alias to be used, and
+;;   the symbolic name of the target namespace. Use :as in the ns macro in preference 
+;;   to calling this directly."
+;;   [alias namespace-sym]
+;;   (. *ns* (addAlias alias (find-ns namespace-sym))))
+
+;; (defn ns-aliases
+;;   "Returns a map of the aliases for the namespace."
+;;   [#^com.las3r.runtime.LispNamespace ns]  (. ns (getAliases)))
+
+;; (defn ns-unalias
+;;   "Removes the alias for the symbol from the namespace."
+;;   [#^com.las3r.runtime.LispNamespace ns sym]
+;;   (. ns (removeAlias sym)))
+
+;; (defn take-nth
+;;   "Returns a lazy seq of every nth item in coll."
+;;   [n coll]
+;;   (when (seq coll)
+;;     (lazy-cons (first coll) (take-nth n (drop n coll)))))
+
+;; (defn interleave
+;;   "Returns a lazy seq of the first item in each coll, then the second
+;;   etc."
+;;   [& colls]
+;;   (apply concat (apply map list colls)))
+
+
+;; (defn nthrest
+;;   "Returns the nth rest of coll, (seq coll) when n is 0."
+;;   [coll n]
+;;   (loop* [n n xs (seq coll)]
+;; 	 (if (and xs (pos? n))
+;; 	   (recur (dec n) (rest xs))
+;; 	   xs)))
+
+;; (defn var-get
+;;   "Gets the value in the var object"
+;;   [#^com.las3r.runtime.Var x] (. x (get)))
+
+;; (defn var-set
+;;   "Sets the value in the var object to val. The var must be
+;;  thread-locally bound."  
+;;   [#^com.las3r.runtime.Var x val] (. x (set val)))
+
+;; (defmacro with-local-vars
+;;   "varbinding=> symbol init-expr
+
+;;   Executes the exprs in a context in which the symbols are bound to
+;;   vars with per-thread bindings to the init-exprs.  The symbols refer
+;;   to the var objects themselves, and must be accessed with var-get and
+;;   var-set"
+;;   [name-vals-vec & body]
+;;   `(let [~@(interleave (take-nth 2 name-vals-vec)
+;; 		       (repeat '(. com.las3r.runtime.Var (create *runtime*))))]
+;;      (. com.las3r.runtime.Var (pushThreadBindings *runtime* (hash-map ~@name-vals-vec)))
+;;      (try
+;;       ~@body
+;;       (finally (. com.las3r.runtime.Var (popThreadBindings *runtime*))))))
+
+;; (defmacro doto
+;;   "Evaluates x then calls all of the methods with the supplied
+;;   arguments in succession on the resulting object, returning it.
+
+;;   (doto (new java.util.HashMap) (put \"a\" 1) (put \"b\" 2))"
+;;   [x & members]
+;;   (let [gx (gensym)]
+;;     `(let [~gx ~x]
+;;        (do
+;; 	 ~@(map (fn [m] (list '. gx m))
+;; 		members))
+;;        ~gx)))
+
+;; (defmacro memfn
+;;   "Expands into code that creates a fn that expects to be passed an
+;;   object and any args and calls the named instance method on the
+;;   object passing the args. Use when you want to treat a Java method as
+;;   a first-class fn."
+;;   [name & args]
+;;   `(fn [target# ~@args]
+;;      (. target# (~name ~@args))))
+
+;; (defmacro ..
+;;   "form => fieldName-symbol or (instanceMethodName-symbol args*)
+
+;;   Expands into a member access (.) of the first member on the first
+;;   argument, followed by the next member on the result, etc. For
+;;   instance:
+
+;;   (.. System (getProperties) (get \"os.name\"))
+
+;;   expands to:
+
+;;   (. (. System (getProperties)) (get \"os.name\"))
+
+;;   but is easier to write, read, and understand."
+;;   ([x form] `(. ~x ~form))
+;;   ([x form & more] `(.. (. ~x ~form) ~@more)))
+
+;; (defmacro ->
+;;   "Macro. Threads the expr through the forms. Inserts x as the
+;;   second item in the first form, making a list of it if it is not a
+;;   list already. If there are more forms, inserts the first form as the
+;;   second item in second form, etc."
+;;   ([x form] (if (seq? form)
+;; 	      `(~(first form) ~x ~@(rest form))
+;; 	      (list form x)))
+;;   ([x form & more] `(-> (-> ~x ~form) ~@more)))
+
+;; (defn symbol?
+;;   "Return true if x is a Symbol"
+;;   [x] (instance? com.las3r.runtime.Symbol x))
+
+
+;; (defn keyword?
+;;   "Return true if x is a Keyword"
+;;   [x] (instance? com.las3r.runtime.Keyword x))
+
+
+;; (defn num
+;;   "Coerce to Number"
+;;   {:tag Number}
+;;   [x] (. com.las3r.runtime.RT (numCast x)))
+
+
+;; (defn int
+;;   "Coerce to int"
+;;   [x] (. com.las3r.runtime.RT (intCast x)))
+
+
+;; (defn rand
+;;   "Returns a random floating point number between 0 (inclusive) and
+;;   1 (exclusive)."
+;;   ([] (. Math (random)))
+;;   ([n] (* n (rand))))
+
+;; (defn rand-int
+;;   "Returns a random integer between 0 (inclusive) and n (exclusive)."
+;;   [n] (int (rand n)))
+
+;; (defmacro defn-
+;;   "same as defn, yielding non-public def"
+;;   [name & decls]
+;;   (list* `defn (with-meta name (assoc (or (meta name) {}) :private true)) decls))
+
+
+
+
+;; (defn destructure [bindings]
+;;   (let [bmap (apply array-map bindings)
+;; 	pb (fn pb [bvec b v]
+;; 	     (let [pvec
+;; 		   (fn [bvec b val]
+;; 		     (let [gvec (gensym "vec__")]
+;; 		       (loop* [ret (-> bvec (conj gvec) (conj val))
+;; 			       n 0
+;; 			       bs b
+;; 			       seen-rest? false]
+;; 			      (if (seq bs)
+;; 				(let [firstb (first bs)]
+;; 				  (cond
+;; 				   (= firstb '&) (recur (pb ret (second bs) (list `nthrest gvec n))
+;; 							n
+;; 							(rrest bs)
+;; 							true)
+;; 				   (= firstb :as) (pb ret (second bs) gvec)
+;; 				   :else (if seen-rest?
+;; 					   (throw (new Error "Unsupported binding form, only :as can follow & parameter"))
+;; 					   (recur (pb ret firstb  (list `nth gvec n nil))
+;; 						  (inc n)
+;; 						  (rest bs)
+;; 						  seen-rest?))))
+;; 				ret))))
+;; 		   pmap
+;; 		   (fn pmap [bvec b v]
+;; 		     (let [gmap (or (get b :as) (gensym "map__"))
+;; 			   defaults (get b :or)]
+;; 		       (loop* [ret (-> bvec (conj gmap) (conj v))
+;; 			       bes (reduce
+;; 				    (fn [bes entry]
+;; 				      (reduce (fn [a b] (assoc a b (get b (val entry))))
+;; 					      (dissoc bes (key entry))
+;; 					      (get bes (key entry))))
+;; 				    (dissoc b :as :or)
+;; 				    {:keys (fn [a] (keyword (str a))), :strs str, :syms (fn [a] (list `quote a))})]
+;; 			      (if (seq bes)
+;; 				(let [bb (key (first bes))
+;; 				      bk (val (first bes))
+;; 				      has-default (contains? defaults bb)]
+;; 				  (recur (pb ret bb (if has-default
+;; 						      (list `get gmap bk (get defaults bb))
+;; 						      (list `get gmap bk)))
+;; 					 (rest bes)))
+;; 				ret)
+;; 			      )))]
+;; 	       (cond
+;; 		(symbol? b) (-> bvec (conj b) (conj v))
+;; 		(vector? b) (pvec bvec b v)
+;; 		(map? b) (pmap bvec b v)
+;; 		:else (throw (new Error (str "Unsupported binding form: " b))))))
+;; 	process-entry (fn [bvec b] (pb bvec (key b) (val b)))]
+;;     (if (every? symbol? (keys bmap))
+;;       bindings
+;;       (reduce process-entry [] bmap))))
+;; ;; (try (destructure '[{a :a} {:a 1}]) (catch Error e (. e (getStackTrace))))
+;; ;; {:a}
+
+
+;; ;; (let [[a b c] [1 2 3]] a)
+;; ;; (let [[a b c & d] [1 2 3 4 5 6 7]] d)
+;; (defmacro let
+;;   "Evaluates the exprs in a lexical context in which the symbols in
+;;   the binding-forms are bound to their respective init-exprs or parts
+;;   therein."
+;;   [bindings & body]
+;;   (when (odd? (count bindings))
+;;     (throw (new Error "Odd number of elements in let bindings")))
+;;   `(let* ~(destructure bindings) ~@body))
+
+;; ;; ((fn [[x y z] a b c & d] x) [1 2 3] 2 3 4 5 6 7)
+;; (defmacro fn
+;;   "(fn name? [params* ] exprs*)
+;;   (fn name? ([params* ] exprs*)+)
+
+;;   params => positional-params* , or positional-params* & rest-param
+;;   positional-param => binding-form
+;;   rest-param => binding-form
+;;   name => symbol
+
+;;   Defines a function"
+;;   [& sigs]
+;;   (let [name (if (symbol? (first sigs)) (first sigs) nil)
+;; 	sigs (if name (rest sigs) sigs)
+;; 	sigs (if (vector? (first sigs)) (list sigs) sigs)
+;; 	psig (fn [sig]
+;; 	       (let [[params & body] sig]
+;; 		 (if (every? symbol? params)
+;; 		   sig
+;; 		   (loop* [params params
+;; 			   new-params []
+;; 			   lets []]
+;; 			  (if params
+;; 			    (if (symbol? (first params))
+;; 			      (recur (rest params) (conj new-params (first params)) lets)
+;; 			      (let [gparam (gensym "p__")]
+;; 				(recur (rest params) (conj new-params gparam) 
+;; 				       (-> lets (conj (first params)) (conj gparam)))))
+;; 			    `(~new-params
+;; 			      (let ~lets
+;; 				~@body)))))))
+;; 	new-sigs (map psig sigs)]
+;;     (with-meta
+;;      (if name
+;;        (list* 'fn* name new-sigs)
+;;        (cons 'fn* new-sigs))
+;;      {} ;;*macro-meta*
+;;      )))
+
+
+;; (defmacro loop
+;;   "Evaluates the exprs in a lexical context in which the symbols in
+;;   the binding-forms are bound to their respective init-exprs or parts
+;;   therein. Acts as a recur target."
+;;   [bindings & body]
+;;   (let [db (destructure bindings)]
+;;     (if (= db bindings)
+;;       `(loop* ~bindings ~@body)
+;;       (let [vs (take-nth 2 (drop 1 bindings))
+;; 	    bs (take-nth 2 bindings)
+;; 	    gs (map (fn [b] (if (symbol? b) b (gensym))) bs)
+;; 	    bfs (reduce (fn [ret [b v g]]
+;; 			  (if (symbol? b)
+;; 			    (conj ret g v)
+;; 			    (conj ret g v b g)))
+;; 			[] (map vector bs vs gs))]
+;; 	`(let ~bfs
+;; 	   (loop* ~(vec (interleave gs gs))
+;; 		  (let ~(vec (interleave bs gs))
+;; 		    ~@body)))))))
+
+;; (defmacro when-first
+;;   "bindings => x xs
+
+;;   Same as (when (seq xs) (let [x (first xs)] body))"
+;;   [bindings & body]
+;;   (if (vector? bindings)
+;;     (let [[x xs] bindings]
+;;       `(when (seq ~xs)
+;; 	 (let [~x (first ~xs)]
+;; 	   ~@body)))
+;;     (throw (new Error
+;; 		"when-first now requires a vector for its binding"))))
+
+;; (defmacro lazy-cat
+;;   "Expands to code which yields a lazy sequence of the concatenation
+;;   of the supplied colls.  Each coll expr is not evaluated until it is
+;;   needed."
+;;   ([coll] `(seq ~coll))
+;;   ([coll & colls]
+;;      `(let [iter# (fn iter# [coll#]
+;; 		    (if (seq coll#)
+;; 		      (lazy-cons (first coll#) (iter# (rest coll#)))
+;; 		      (lazy-cat ~@colls)))]
+;; 	(iter# ~coll))))
+
+
+;; (defmacro for
+;;   "List comprehension. Takes a vector of one or more
+;;  binding-form/collection-expr pairs, each followed by an optional filtering
+;;  :when/:while expression (:when test or :while test), and yields a
+;;  lazy sequence of evaluations of expr. Collections are iterated in a
+;;  nested fashion, rightmost fastest, and nested coll-exprs can refer to
+;;  bindings created in prior binding-forms.
+;;  (take 100 (for [x (range 100000000) y (range 1000000) :while (< y x)]  [x y]))"
+;;   ([seq-exprs expr]
+;;      (let [pargs (fn [xs]
+;; 		   (loop [ret []
+;; 			  [b e & [w f & wr :as r] :as xs] (seq xs)]
+;; 		     (if xs
+;; 		       (cond 
+;; 			(= w :when) (recur (conj ret {:b b :e e :f f :w :when}) wr)
+;; 			(= w :while) (recur (conj ret {:b b :e e :f f :w :while}) wr)
+;; 			:else (recur (conj ret {:b b :e e :f true :w :while}) r))
+;; 		       (seq ret))))
 	     
-	   emit (fn emit [[{b :b f :f w :w} & [{ys :e} :as rses]]]
-		  (let [giter (gensym "iter__") gxs (gensym "s__")]
-		    `(fn ~giter [~gxs]
-		       (when-first [~b ~gxs]
-			   (if ~f
-			     ~(if rses
-				`(let [iterys# ~(emit rses)
-				       fs# (iterys# ~ys)]
-				   (if fs#
-				     (lazy-cat fs# (~giter (rest ~gxs)))
-				     (recur (rest ~gxs))))
-				`(lazy-cons ~expr (~giter (rest ~gxs))))
-			     ~(if (= w :when)
-				`(recur (rest ~gxs))
-				nil))))))]
-       `(let [iter# ~(emit (pargs seq-exprs))]
-	  (iter# ~(second seq-exprs))))))
+;; 	   emit (fn emit [[{b :b f :f w :w} & [{ys :e} :as rses]]]
+;; 		  (let [giter (gensym "iter__") gxs (gensym "s__")]
+;; 		    `(fn ~giter [~gxs]
+;; 		       (when-first [~b ~gxs]
+;; 			   (if ~f
+;; 			     ~(if rses
+;; 				`(let [iterys# ~(emit rses)
+;; 				       fs# (iterys# ~ys)]
+;; 				   (if fs#
+;; 				     (lazy-cat fs# (~giter (rest ~gxs)))
+;; 				     (recur (rest ~gxs))))
+;; 				`(lazy-cons ~expr (~giter (rest ~gxs))))
+;; 			     ~(if (= w :when)
+;; 				`(recur (rest ~gxs))
+;; 				nil))))))]
+;;        `(let [iter# ~(emit (pargs seq-exprs))]
+;; 	  (iter# ~(second seq-exprs))))))
       
 
-(defn special-symbol?
-  "Returns true if s names a special form"
-  [s]
-  (. *runtime* (isSpecial s)))
+;; (defn special-symbol?
+;;   "Returns true if s names a special form"
+;;   [s]
+;;   (. *runtime* (isSpecial s)))
 
-(defn subs
-  "Returns the substring of s beginning at start inclusive, and ending
-  at end (defaults to length of string), exclusive."
-  ([#^String s start] (. s (substring start)))
-  ([#^String s start end] (. s (substring start end))))
+;; (defn subs
+;;   "Returns the substring of s beginning at start inclusive, and ending
+;;   at end (defaults to length of string), exclusive."
+;;   ([#^String s start] (. s (substring start)))
+;;   ([#^String s start end] (. s (substring start end))))
 
-(defn max-key
-  "Returns the x for which (k x), a number, is greatest."
-  ([k x] x)
-  ([k x y] (if (> (k x) (k y)) x y))
-  ([k x y & more]
-     (reduce (fn [a b] (max-key k a b)) (max-key k x y) more)))
+;; (defn max-key
+;;   "Returns the x for which (k x), a number, is greatest."
+;;   ([k x] x)
+;;   ([k x y] (if (> (k x) (k y)) x y))
+;;   ([k x y & more]
+;;      (reduce (fn [a b] (max-key k a b)) (max-key k x y) more)))
 
-(defn min-key
-  "Returns the x for which (k x), a number, is least."
-  ([k x] x)
-  ([k x y] (if (< (k x) (k y)) x y))
-  ([k x y & more]
-     (reduce (fn [a b] (min-key k a b)) (min-key k x y) more)))
-
-
-(defn distinct
-  "Returns a lazy sequence of the elements of coll with duplicates removed"
-  [coll] 
-  (let [step (fn step [[f & r :as xs] seen]
-	       (when xs
-		 (if (contains? seen f) (recur r seen)
-		     (lazy-cons f (step r (conj seen f))))))]
-    (step (seq coll) #{})))
-;;(distinct '(1 1 4 3 4 2 ))
-
-(defmacro if-let 
-  "if test is true, evaluates then with binding-form bound to the value of test, if not, yields else"
-  ([binding-form test then]
-     `(if-let ~binding-form ~test ~then nil))
-  ([binding-form test then else]
-     `(let [temp# ~test]
-	(if temp# 
-	  (let [~binding-form temp#]
-	    ~then)
-	  ~else))))
-
-(defmacro when-let 
-  "when test is true, evaluates body with binding-form bound to the value of test"
-  [binding-form test & body]
-  `(let [temp# ~test]
-     (when temp#
-       (let [~binding-form temp#]
-	 ~@body))))
+;; (defn min-key
+;;   "Returns the x for which (k x), a number, is least."
+;;   ([k x] x)
+;;   ([k x y] (if (< (k x) (k y)) x y))
+;;   ([k x y & more]
+;;      (reduce (fn [a b] (min-key k a b)) (min-key k x y) more)))
 
 
-(defmacro comment
-  "Ignores body, yields nil"
-  [& body])
+;; (defn distinct
+;;   "Returns a lazy sequence of the elements of coll with duplicates removed"
+;;   [coll] 
+;;   (let [step (fn step [[f & r :as xs] seen]
+;; 	       (when xs
+;; 		 (if (contains? seen f) (recur r seen)
+;; 		     (lazy-cons f (step r (conj seen f))))))]
+;;     (step (seq coll) #{})))
+;; ;;(distinct '(1 1 4 3 4 2 ))
+
+;; (defmacro if-let 
+;;   "if test is true, evaluates then with binding-form bound to the value of test, if not, yields else"
+;;   ([binding-form test then]
+;;      `(if-let ~binding-form ~test ~then nil))
+;;   ([binding-form test then else]
+;;      `(let [temp# ~test]
+;; 	(if temp# 
+;; 	  (let [~binding-form temp#]
+;; 	    ~then)
+;; 	  ~else))))
+
+;; (defmacro when-let 
+;;   "when test is true, evaluates body with binding-form bound to the value of test"
+;;   [binding-form test & body]
+;;   `(let [temp# ~test]
+;;      (when temp#
+;;        (let [~binding-form temp#]
+;; 	 ~@body))))
 
 
-;;;;;;;;;;;;;;;; for..each and for..in wrappers
-
-(defn get-property-values
-  "Return a list of all the values of an object's dynamic properties, wrapper for actionscript's for each(...) construct."
-  [obj]
-  (. *runtime* (propertyValuesList obj)))
-
-(defn get-property-names
-  "Return a list of all the names of an object's dynamic properties, wrapper for actionscript's for(.. in ..) construct."
-  [obj]
-  (. *runtime* (propertyNamesList obj)))
-
-(defn get-property
-  "Return an instance's property value using the array access [] operator."
-  [instance property]
-  (. *runtime* (getPropertyByName instance property)))
-
-(defn set-property!
-  "Set an instance's property to value using the array access [] operator."
-  [instance property value]
-  (. *runtime* (setPropertyByName instance property value)))
+;; (defmacro comment
+;;   "Ignores body, yields nil"
+;;   [& body])
 
 
+;; ;;;;;;;;;;;;;;;; for..each and for..in wrappers
+
+;; (defn get-property-values
+;;   "Return a list of all the values of an object's dynamic properties, wrapper for actionscript's for each(...) construct."
+;;   [obj]
+;;   (. *runtime* (propertyValuesList obj)))
+
+;; (defn get-property-names
+;;   "Return a list of all the names of an object's dynamic properties, wrapper for actionscript's for(.. in ..) construct."
+;;   [obj]
+;;   (. *runtime* (propertyNamesList obj)))
+
+;; (defn get-property
+;;   "Return an instance's property value using the array access [] operator."
+;;   [instance property]
+;;   (. *runtime* (getPropertyByName instance property)))
+
+;; (defn set-property!
+;;   "Set an instance's property to value using the array access [] operator."
+;;   [instance property value]
+;;   (. *runtime* (setPropertyByName instance property value)))
 
 
-;;;;;;;;;;;;;;;; multimethods ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn alter-var-root
-  "Atomically alters the root binding of var v by applying f to its
-  current value plus any args"
-  [#^com.las3r.runtime.Var v f & args] (. v (alterRoot f args)))
-
-(defn class?
-  "Returns true if x is an instance of Class"
-  [x] (instance? Class x))
-
-(defn make-hierarchy 
-  "Creates a hierarchy object for use with derive, isa? etc."
-  [] {:parents {} :descendants {} :ancestors {}})
-
-(def #^{:private true}
-     global-hierarchy (make-hierarchy))
-
-(defn bases
-  "Returns the immediate superclass and direct interfaces of c, if any"
-  [#^Class c]
-  (let [i (. com.las3r.runtime.RT (getInterfaces c))
-        s (. com.las3r.runtime.RT (getSuperClass c))]
-    (set
-     (if s (cons s i) i))))
-
-(defn supers
-  "Returns the immediate and indirect superclasses and interfaces of c, if any"
-  [#^Class c]
-  (let [i (. com.las3r.runtime.RT (getInterfaces c))
-        s (. com.las3r.runtime.RT (getSuperClasses c))]
-    (set (concat i s))))
-
-(defn conforms?
-  "Does child conform to the interface of parent?"
-  [#^Class child #^Class parent]
-  (or (= child parent)
-      (contains? (supers child) parent)))
-
-(defn isa?
-  "Returns true if (= child parent), or child is directly or indirectly derived from
-  parent, either via a Java type inheritance relationship or a
-  relationship established via derive. h must be a hierarchy obtained
-  from make-hierarchy, if not supplied defaults to the global
-  hierarchy"
-  ([child parent] (isa? global-hierarchy child parent))
-  ([h child parent]
-     (or (= child parent)
-	 (and (class? parent) (class? child) 
-	      (conforms? child parent))
-	 (contains? ((:ancestors h) child) parent)
-	 (and (class? child) (some (fn [c] (contains? ((:ancestors h) c) parent)) (supers child)))
-	 (and (vector? parent) (vector? child)
-	      (= (count parent) (count child))
-	      (loop [ret true i 0]
-		(if (or (not ret) (= i (count parent)))
-		  ret
-		  (recur (isa? h (child i) (parent i)) (inc i))))))))
-
-(defn parents
-  "Returns the immediate parents of tag, either via a Java type
-  inheritance relationship or a relationship established via derive. h
-  must be a hierarchy obtained from make-hierarchy, if not supplied
-  defaults to the global hierarchy"
-  ([tag] (parents global-hierarchy tag))
-  ([h tag] (not-empty
-            (let [tp (get (:parents h) tag)]
-              (if (class? tag)
-                (into (set (bases tag)) tp) 
-                tp)))))
-
-(defn ancestors 
-  "Returns the immediate and indirect parents of tag, either via a Java type
-  inheritance relationship or a relationship established via derive. h
-  must be a hierarchy obtained from make-hierarchy, if not supplied
-  defaults to the global hierarchy"
-  ([tag] (ancestors global-hierarchy tag))
-  ([h tag] (not-empty
-            (let [ta (get (:ancestors h) tag)]
-              (if (class? tag)
-                (into (set (supers tag)) ta) 
-                ta)))))
-
-(defn descendants
-  "Returns the immediate and indirect children of tag, through a
-  relationship established via derive. h must be a hierarchy obtained
-  from make-hierarchy, if not supplied defaults to the global
-  hierarchy. Note: does not work on Java type inheritance
-  relationships."
-  ([tag] (descendants global-hierarchy tag))
-  ([h tag] (if (class? tag)
-             (throw (new Error("UnsupportedOperationException: Can't get descendants of classes")))
-             (not-empty (get (:descendants h) tag)))))
 
 
-(defn derive
-  "Establishes a parent/child relationship between parent and
-  tag. Parent must be a namespace-qualified symbol or keyword and
-  child can be either a namespace-qualified symbol or keyword or a
-  class. h must be a hierarchy obtained from make-hierarchy, if not
-  supplied defaults to, and modifies, the global hierarchy."
-  ([tag parent]
-     (assert (namespace parent))
-     (assert (or (class? tag) (and (instance? com.las3r.runtime.Named tag) (namespace tag))))
+;; ;;;;;;;;;;;;;;;; multimethods ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-     (alter-var-root #'global-hierarchy derive tag parent) nil)
-  ([h tag parent]
-     (assert (not= tag parent))
-     (assert (or (class? tag) (instance? com.las3r.runtime.Named tag)))
-     (assert (instance? com.las3r.runtime.Named parent))
-     (let [tp (:parents h)
-	   td (:descendants h)
-	   ta (:ancestors h)
-	   tf (fn [m source sources target targets]
-		(reduce (fn [ret k]
-			  (assoc ret k 
-				 (reduce conj (get targets k #{}) (cons target (targets target)))))
-			m (cons source (sources source))))]
-       (or 
-	(when-not (contains? (tp tag) parent)
-	  (when (contains? (ta tag) parent)
-	    (throw (new Error (str tag "already has" parent "as ancestor"))))
-	  (when (contains? (ta parent) tag)
-	    (throw (new Error (str "Cyclic derivation:" parent "has" tag "as ancestor"))))
-	  {:parents (assoc (:parents h) tag (conj (get tp tag #{}) parent))     
-	   :ancestors (tf (:ancestors h) tag td parent ta)
-	   :descendants (tf (:descendants h) parent ta tag td)})
-	h))))
+;; (defn alter-var-root
+;;   "Atomically alters the root binding of var v by applying f to its
+;;   current value plus any args"
+;;   [#^com.las3r.runtime.Var v f & args] (. v (alterRoot f args)))
 
-(defn underive 
-  "Removes a parent/child relationship between parent and
-  tag. h must be a hierarchy obtained from make-hierarchy, if not
-  supplied defaults to, and modifies, the global hierarchy."
-  ([tag parent] (alter-var-root #'global-hierarchy underive tag parent) nil)
-  ([h tag parent]
-     (let [tp (:parents h)
-	   td (:descendants h)
-	   ta (:ancestors h)
-	   tf (fn [m source sources target targets]
-		(reduce
-		 (fn [ret k]
-		   (assoc ret k 
-			  (reduce disj (get targets k) (cons target (targets target)))))
-		 m (cons source (sources source))))]
-       (if (contains? (tp tag) parent)
-	 {:parent (assoc (:parents h) tag (disj (get tp tag) parent))    
-	  :ancestors (tf (:ancestors h) tag td parent ta)
-	  :descendants (tf (:descendants h) parent ta tag td)}
-	 h))))
+;; (defn class?
+;;   "Returns true if x is an instance of Class"
+;;   [x] (instance? Class x))
 
-(defmacro defmulti
-  "Creates a new multimethod with the associated dispatch function. If
-  default-dispatch-val is supplied it becomes the default dispatch
-  value of the multimethod, otherwise the default dispatch value
-  is :default."
-  ([name dispatch-fn] `(defmulti ~name ~dispatch-fn :default))
-  ([name dispatch-fn default-val]
-     `(def ~(with-meta name (assoc ^name :tag 'com.las3r.runtime.MultiFn)) 
-	   (new com.las3r.runtime.MultiFn *runtime* ~dispatch-fn ~default-val))))
+;; (defn make-hierarchy 
+;;   "Creates a hierarchy object for use with derive, isa? etc."
+;;   [] {:parents {} :descendants {} :ancestors {}})
 
-(defmacro defmethod
-  "Creates and installs a new method of multimethod associated with dispatch-value. "
-  [multifn dispatch-val & fn-tail]
-  `(. ~multifn (addMethod ~dispatch-val (fn ~@fn-tail))))
+;; (def #^{:private true}
+;;      global-hierarchy (make-hierarchy))
 
-(defn remove-method
-  "Removes the method of multimethod associated	with dispatch-value."
-  [multifn dispatch-val]
-  (. multifn (removeMethod dispatch-val)))
+;; (defn bases
+;;   "Returns the immediate superclass and direct interfaces of c, if any"
+;;   [#^Class c]
+;;   (let [i (. com.las3r.runtime.RT (getInterfaces c))
+;;         s (. com.las3r.runtime.RT (getSuperClass c))]
+;;     (set
+;;      (if s (cons s i) i))))
 
-(defn prefer-method
-  "Causes the multimethod to prefer matches of dispatch-val-x over dispatch-val-y when there is a conflict"
-  [multifn dispatch-val-x dispatch-val-y]
-  (. multifn (preferMethod dispatch-val-x dispatch-val-y)))
+;; (defn supers
+;;   "Returns the immediate and indirect superclasses and interfaces of c, if any"
+;;   [#^Class c]
+;;   (let [i (. com.las3r.runtime.RT (getInterfaces c))
+;;         s (. com.las3r.runtime.RT (getSuperClasses c))]
+;;     (set (concat i s))))
 
-;;;;;;;;;;;;;;;; emacs integration ;;;;;;;;;;;;;;;;;;;;;;;
+;; (defn conforms?
+;;   "Does child conform to the interface of parent?"
+;;   [#^Class child #^Class parent]
+;;   (or (= child parent)
+;;       (contains? (supers child) parent)))
 
-(import '(flash.net URLLoader URLRequest))
-(import '(flash.events Event IOErrorEvent TimerEvent ProgressEvent))
-(import '(flash.utils Timer))
-(import '(flash.net Socket))
-(import '(com.las3r.util StringBuffer))
+;; (defn isa?
+;;   "Returns true if (= child parent), or child is directly or indirectly derived from
+;;   parent, either via a Java type inheritance relationship or a
+;;   relationship established via derive. h must be a hierarchy obtained
+;;   from make-hierarchy, if not supplied defaults to the global
+;;   hierarchy"
+;;   ([child parent] (isa? global-hierarchy child parent))
+;;   ([h child parent]
+;;      (or (= child parent)
+;; 	 (and (class? parent) (class? child) 
+;; 	      (conforms? child parent))
+;; 	 (contains? ((:ancestors h) child) parent)
+;; 	 (and (class? child) (some (fn [c] (contains? ((:ancestors h) c) parent)) (supers child)))
+;; 	 (and (vector? parent) (vector? child)
+;; 	      (= (count parent) (count child))
+;; 	      (loop [ret true i 0]
+;; 		(if (or (not ret) (= i (count parent)))
+;; 		  ret
+;; 		  (recur (isa? h (child i) (parent i)) (inc i))))))))
 
+;; (defn parents
+;;   "Returns the immediate parents of tag, either via a Java type
+;;   inheritance relationship or a relationship established via derive. h
+;;   must be a hierarchy obtained from make-hierarchy, if not supplied
+;;   defaults to the global hierarchy"
+;;   ([tag] (parents global-hierarchy tag))
+;;   ([h tag] (not-empty
+;;             (let [tp (get (:parents h) tag)]
+;;               (if (class? tag)
+;;                 (into (set (bases tag)) tp) 
+;;                 tp)))))
 
-(defn- read-bytes
-  "Helper function for reading 0-terminated strings from eval_pipe."
-  [socket buffer]
-  (let [term 0]
-    (loop [to-eval []]
-      (if (> (. socket bytesAvailable) 0)
-	(let [byte (. socket (readUnsignedByte))]
-	  (if (= byte term)
-	    (let [src (str buffer)]
-	      (. buffer (clear))
-	      (recur (cons src to-eval)))
-	    (let []
-	      (. buffer (append (char-code->str byte)))
-	      (recur to-eval)
-	      )))
-	to-eval
-	))))
+;; (defn ancestors 
+;;   "Returns the immediate and indirect parents of tag, either via a Java type
+;;   inheritance relationship or a relationship established via derive. h
+;;   must be a hierarchy obtained from make-hierarchy, if not supplied
+;;   defaults to the global hierarchy"
+;;   ([tag] (ancestors global-hierarchy tag))
+;;   ([h tag] (not-empty
+;;             (let [ta (get (:ancestors h) tag)]
+;;               (if (class? tag)
+;;                 (into (set (supers tag)) ta) 
+;;                 ta)))))
 
-(defn- connect-to-eval-pipe
-  "Connect to eval_pipe, reading and evaluating strings as they arrive."
-  ([] (connect-to-eval-pipe 9877))
-  ([port]
-     (let [socket (new Socket)
-	   buffer (new StringBuffer)]
-       (. socket (addEventListener (. Event CONNECT) (fn [e] (println "Connected to eval_pipe."))))
-       (. socket (addEventListener (. Event CLOSE) (fn [e] (println "Disconnected from eval_pipe."))))
-       (. socket (addEventListener (. IOErrorEvent IO_ERROR) (fn [e] (println "Error on eval_pipe."))))
-       (. socket (addEventListener 
-		  (. ProgressEvent SOCKET_DATA)
-		  (fn [e]
-		    (doseq src (read-bytes socket buffer)
-		      (eval src 
-			    (fn [val] (prn val))
-			    (fn [err] (binding [*out* *err*]
-					(prn err)))))
-		    )))
-       (println (str "Attempting connection to eval_pipe at localhost:" port "."))
-       (. socket (connect "localhost" port))
-       socket
-       )))
-
-(def *ctep-sockets* (ary []))
-(defn ctep 
-  "Connect to the eval pipe. If we don't hold a reference to the socket, it'll get GC'd, so we
-   push it onto a global, mutable array."
-  []
-  (let [s (connect-to-eval-pipe)]
-    (. *ctep-sockets* (push s))
-    s
-    ))
+;; (defn descendants
+;;   "Returns the immediate and indirect children of tag, through a
+;;   relationship established via derive. h must be a hierarchy obtained
+;;   from make-hierarchy, if not supplied defaults to the global
+;;   hierarchy. Note: does not work on Java type inheritance
+;;   relationships."
+;;   ([tag] (descendants global-hierarchy tag))
+;;   ([h tag] (if (class? tag)
+;;              (throw (new Error("UnsupportedOperationException: Can't get descendants of classes")))
+;;              (not-empty (get (:descendants h) tag)))))
 
 
-(defn load-url 
-  "Load data from a URL using flash.net.URLLoader, setup on-complete and on-error as event listeners."
-  [url on-complete on-error]
-  (let [request (new flash.net.URLRequest url)
-	loader (new flash.net.URLLoader)]
-    (. loader (addEventListener "complete" on-complete))
-    (. loader (addEventListener "ioError" on-error))
-    (. loader (addEventListener "securityError" on-error))
-    (. loader (load request))))
+;; (defn derive
+;;   "Establishes a parent/child relationship between parent and
+;;   tag. Parent must be a namespace-qualified symbol or keyword and
+;;   child can be either a namespace-qualified symbol or keyword or a
+;;   class. h must be a hierarchy obtained from make-hierarchy, if not
+;;   supplied defaults to, and modifies, the global hierarchy."
+;;   ([tag parent]
+;;      (assert (namespace parent))
+;;      (assert (or (class? tag) (and (instance? com.las3r.runtime.Named tag) (namespace tag))))
 
-(defn browse-file
-  "Browse to a file. Apply callback to the loaded FileReference."
-  [filters callback] 
-  (let [f (new flash.net.FileReference)
-	data-handler
-	(fn [e] (callback f))]
-    (. f (addEventListener (. Event SELECT) (fn [e] (. f (load)))))
-    (. f (addEventListener (. Event COMPLETE) data-handler))
-    (. f (browse (to-array filters)))))
+;;      (alter-var-root #'global-hierarchy derive tag parent) nil)
+;;   ([h tag parent]
+;;      (assert (not= tag parent))
+;;      (assert (or (class? tag) (instance? com.las3r.runtime.Named tag)))
+;;      (assert (instance? com.las3r.runtime.Named parent))
+;;      (let [tp (:parents h)
+;; 	   td (:descendants h)
+;; 	   ta (:ancestors h)
+;; 	   tf (fn [m source sources target targets]
+;; 		(reduce (fn [ret k]
+;; 			  (assoc ret k 
+;; 				 (reduce conj (get targets k #{}) (cons target (targets target)))))
+;; 			m (cons source (sources source))))]
+;;        (or 
+;; 	(when-not (contains? (tp tag) parent)
+;; 	  (when (contains? (ta tag) parent)
+;; 	    (throw (new Error (str tag "already has" parent "as ancestor"))))
+;; 	  (when (contains? (ta parent) tag)
+;; 	    (throw (new Error (str "Cyclic derivation:" parent "has" tag "as ancestor"))))
+;; 	  {:parents (assoc (:parents h) tag (conj (get tp tag #{}) parent))     
+;; 	   :ancestors (tf (:ancestors h) tag td parent ta)
+;; 	   :descendants (tf (:descendants h) parent ta tag td)})
+;; 	h))))
+
+;; (defn underive 
+;;   "Removes a parent/child relationship between parent and
+;;   tag. h must be a hierarchy obtained from make-hierarchy, if not
+;;   supplied defaults to, and modifies, the global hierarchy."
+;;   ([tag parent] (alter-var-root #'global-hierarchy underive tag parent) nil)
+;;   ([h tag parent]
+;;      (let [tp (:parents h)
+;; 	   td (:descendants h)
+;; 	   ta (:ancestors h)
+;; 	   tf (fn [m source sources target targets]
+;; 		(reduce
+;; 		 (fn [ret k]
+;; 		   (assoc ret k 
+;; 			  (reduce disj (get targets k) (cons target (targets target)))))
+;; 		 m (cons source (sources source))))]
+;;        (if (contains? (tp tag) parent)
+;; 	 {:parent (assoc (:parents h) tag (disj (get tp tag) parent))    
+;; 	  :ancestors (tf (:ancestors h) tag td parent ta)
+;; 	  :descendants (tf (:descendants h) parent ta tag td)}
+;; 	 h))))
+
+;; (defmacro defmulti
+;;   "Creates a new multimethod with the associated dispatch function. If
+;;   default-dispatch-val is supplied it becomes the default dispatch
+;;   value of the multimethod, otherwise the default dispatch value
+;;   is :default."
+;;   ([name dispatch-fn] `(defmulti ~name ~dispatch-fn :default))
+;;   ([name dispatch-fn default-val]
+;;      `(def ~(with-meta name (assoc ^name :tag 'com.las3r.runtime.MultiFn)) 
+;; 	   (new com.las3r.runtime.MultiFn *runtime* ~dispatch-fn ~default-val))))
+
+;; (defmacro defmethod
+;;   "Creates and installs a new method of multimethod associated with dispatch-value. "
+;;   [multifn dispatch-val & fn-tail]
+;;   `(. ~multifn (addMethod ~dispatch-val (fn ~@fn-tail))))
+
+;; (defn remove-method
+;;   "Removes the method of multimethod associated	with dispatch-value."
+;;   [multifn dispatch-val]
+;;   (. multifn (removeMethod dispatch-val)))
+
+;; (defn prefer-method
+;;   "Causes the multimethod to prefer matches of dispatch-val-x over dispatch-val-y when there is a conflict"
+;;   [multifn dispatch-val-x dispatch-val-y]
+;;   (. multifn (preferMethod dispatch-val-x dispatch-val-y)))
+
+;; ;;;;;;;;;;;;;;;; emacs integration ;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (import '(flash.net URLLoader URLRequest))
+;; (import '(flash.events Event IOErrorEvent TimerEvent ProgressEvent))
+;; (import '(flash.utils Timer))
+;; (import '(flash.net Socket))
+;; (import '(com.las3r.util StringBuffer))
 
 
-(defn browse-save-file
-  "Browse to a file. Apply callback to the loaded FileReference."
-  ([data name] (browse-save-file data name (fn [d] )))
-  ([data name callback]
-     (let [f (new flash.net.FileReference)
-	   data-handler
-	   (fn [e] (callback f))]
-       (. f (addEventListener (. Event COMPLETE) data-handler))
-       (. f (save data name)))))
+;; (defn- read-bytes
+;;   "Helper function for reading 0-terminated strings from eval_pipe."
+;;   [socket buffer]
+;;   (let [term 0]
+;;     (loop [to-eval []]
+;;       (if (> (. socket bytesAvailable) 0)
+;; 	(let [byte (. socket (readUnsignedByte))]
+;; 	  (if (= byte term)
+;; 	    (let [src (str buffer)]
+;; 	      (. buffer (clear))
+;; 	      (recur (cons src to-eval)))
+;; 	    (let []
+;; 	      (. buffer (append (char-code->str byte)))
+;; 	      (recur to-eval)
+;; 	      )))
+;; 	to-eval
+;; 	))))
 
-(defn eval-url
-  "Evaluate the code in the provided URL and call back with the result or error if callbacks are provided."
-  ([url] (eval-url url (fn [e] nil) (fn [e] nil)))
-  ([url callback] (eval-url url callback (fn [e] nil)))
-  ([url callback err-callback]
-     (load-url url
-	       (fn [e] 
-		 (eval (.. e target data) callback err-callback))
-	       err-callback)))
+;; (defn- connect-to-eval-pipe
+;;   "Connect to eval_pipe, reading and evaluating strings as they arrive."
+;;   ([] (connect-to-eval-pipe 9877))
+;;   ([port]
+;;      (let [socket (new Socket)
+;; 	   buffer (new StringBuffer)]
+;;        (. socket (addEventListener (. Event CONNECT) (fn [e] (println "Connected to eval_pipe."))))
+;;        (. socket (addEventListener (. Event CLOSE) (fn [e] (println "Disconnected from eval_pipe."))))
+;;        (. socket (addEventListener (. IOErrorEvent IO_ERROR) (fn [e] (println "Error on eval_pipe."))))
+;;        (. socket (addEventListener 
+;; 		  (. ProgressEvent SOCKET_DATA)
+;; 		  (fn [e]
+;; 		    (doseq src (read-bytes socket buffer)
+;; 		      (eval src 
+;; 			    (fn [val] (prn val))
+;; 			    (fn [err] (binding [*out* *err*]
+;; 					(prn err)))))
+;; 		    )))
+;;        (println (str "Attempting connection to eval_pipe at localhost:" port "."))
+;;        (. socket (connect "localhost" port))
+;;        socket
+;;        )))
+
+;; (def *ctep-sockets* (ary []))
+;; (defn ctep 
+;;   "Connect to the eval pipe. If we don't hold a reference to the socket, it'll get GC'd, so we
+;;    push it onto a global, mutable array."
+;;   []
+;;   (let [s (connect-to-eval-pipe)]
+;;     (. *ctep-sockets* (push s))
+;;     s
+;;     ))
+
+
+;; (defn load-url 
+;;   "Load data from a URL using flash.net.URLLoader, setup on-complete and on-error as event listeners."
+;;   [url on-complete on-error]
+;;   (let [request (new flash.net.URLRequest url)
+;; 	loader (new flash.net.URLLoader)]
+;;     (. loader (addEventListener "complete" on-complete))
+;;     (. loader (addEventListener "ioError" on-error))
+;;     (. loader (addEventListener "securityError" on-error))
+;;     (. loader (load request))))
+
+;; (defn browse-file
+;;   "Browse to a file. Apply callback to the loaded FileReference."
+;;   [filters callback] 
+;;   (let [f (new flash.net.FileReference)
+;; 	data-handler
+;; 	(fn [e] (callback f))]
+;;     (. f (addEventListener (. Event SELECT) (fn [e] (. f (load)))))
+;;     (. f (addEventListener (. Event COMPLETE) data-handler))
+;;     (. f (browse (to-array filters)))))
+
+
+;; (defn browse-save-file
+;;   "Browse to a file. Apply callback to the loaded FileReference."
+;;   ([data name] (browse-save-file data name (fn [d] )))
+;;   ([data name callback]
+;;      (let [f (new flash.net.FileReference)
+;; 	   data-handler
+;; 	   (fn [e] (callback f))]
+;;        (. f (addEventListener (. Event COMPLETE) data-handler))
+;;        (. f (save data name)))))
+
+;; (defn eval-url
+;;   "Evaluate the code in the provided URL and call back with the result or error if callbacks are provided."
+;;   ([url] (eval-url url (fn [e] nil) (fn [e] nil)))
+;;   ([url callback] (eval-url url callback (fn [e] nil)))
+;;   ([url callback err-callback]
+;;      (load-url url
+;; 	       (fn [e] 
+;; 		 (eval (.. e target data) callback err-callback))
+;; 	       err-callback)))
 
 (defn compile-str
   "Evaluate all forms in src, returns a ByteArray containing compiled swf."
@@ -2176,9 +2174,9 @@
 	  (callback (. *compiler* (getAOTCompileBytes)))
 	  (. *compiler* (endAOTCompile)))
 	(fn [err]
-	  (binding [*out* *err*] (prn err))
+	  (binding [*out* *err*] nil #_ (prn err))
 	  (. *compiler* (endAOTCompile)))
-	(fn [] (print "."))
+	(fn [a b] nil)
 	))
 
 (defn compile-str-and-save
@@ -2189,355 +2187,355 @@
 			       (let [f (new flash.net.FileReference)]
 				 (. f (save bytes (str module-id ".swf")))))))
 
-(defn compile-file-and-save
-  "1. Browse to a source file. 
-   2. Compile all forms in the source file. 
-   3. Browse a location to save the compiled swf module."
-  [module-id] 
-  (let [filters [(new flash.net.FileFilter "lsr" "*.lsr")]]
-    (browse-file filters 
-		 (fn [f]
-		   (let [src (str (. f data))]
-		     (compile-str-and-save src module-id))))))
+;; (defn compile-file-and-save
+;;   "1. Browse to a source file. 
+;;    2. Compile all forms in the source file. 
+;;    3. Browse a location to save the compiled swf module."
+;;   [module-id] 
+;;   (let [filters [(new flash.net.FileFilter "lsr" "*.lsr")]]
+;;     (browse-file filters 
+;; 		 (fn [f]
+;; 		   (let [src (str (. f data))]
+;; 		     (compile-str-and-save src module-id))))))
 
-(defn load-module
-  "1. Browse to a swf module on the local file system.
-   2. Load the compiled lisp forms contained inside."
-  [module-id] 
-  (let [filters [(new flash.net.FileFilter "swf" "*.swf")]]
-    (browse-file 
-     filters
-     (fn [f]
-       (. *runtime*
-	  (loadModule 
-	   module-id (. f data)
-	   (fn [val] (prn val))
-	   (fn [err] (binding [*out* *err*]
-		       (prn err)))))
-       ))))
+;; (defn load-module
+;;   "1. Browse to a swf module on the local file system.
+;;    2. Load the compiled lisp forms contained inside."
+;;   [module-id] 
+;;   (let [filters [(new flash.net.FileFilter "swf" "*.swf")]]
+;;     (browse-file 
+;;      filters
+;;      (fn [f]
+;;        (. *runtime*
+;; 	  (loadModule 
+;; 	   module-id (. f data)
+;; 	   (fn [val] (prn val))
+;; 	   (fn [err] (binding [*out* *err*]
+;; 		       (prn err)))))
+;;        ))))
 
-(defn load-file
-  "1. Browse to a lsr source file on the local file system.
-   2. Load the lisp forms contained inside."
-  [] 
-  (let [filters [(new flash.net.FileFilter "lsr" "*.lsr")]]
-    (browse-file 
-     filters
-     (fn [f]
-       (let [src (str (. f data))]
-	 (eval src
-	       (fn [val] (prn val))
-	       (fn [err] (binding [*out* *err*]
-			   (prn err)))
-	       (fn [] (print "."))
-	       ))
-       ))))
+;; (defn load-file
+;;   "1. Browse to a lsr source file on the local file system.
+;;    2. Load the lisp forms contained inside."
+;;   [] 
+;;   (let [filters [(new flash.net.FileFilter "lsr" "*.lsr")]]
+;;     (browse-file 
+;;      filters
+;;      (fn [f]
+;;        (let [src (str (. f data))]
+;; 	 (eval src
+;; 	       (fn [val] (prn val))
+;; 	       (fn [err] (binding [*out* *err*]
+;; 			   (prn err)))
+;; 	       (fn [a b] (print "."))
+;; 	       ))
+;;        ))))
 
-(defn get-in
-  "returns the value in a nested associative structure, where ks is a sequence of keys"
-  [m ks]
-  (reduce get m ks))
+;; (defn get-in
+;;   "returns the value in a nested associative structure, where ks is a sequence of keys"
+;;   [m ks]
+;;   (reduce get m ks))
 
-(defn assoc-in
-  "Associates a value in a nested associative structure, where ks is a
-  sequence of keys and v is the new value and returns a new nested structure.
-  If any levels do not exist, hash-maps will be created."
-  [m [k & ks] v]
-  (if ks
-    (assoc m k (assoc-in (get m k) ks v))
-    (assoc m k v)))
+;; (defn assoc-in
+;;   "Associates a value in a nested associative structure, where ks is a
+;;   sequence of keys and v is the new value and returns a new nested structure.
+;;   If any levels do not exist, hash-maps will be created."
+;;   [m [k & ks] v]
+;;   (if ks
+;;     (assoc m k (assoc-in (get m k) ks v))
+;;     (assoc m k v)))
 
-(defn update-in
-  "'Updates' a value in a nested associative structure, where ks is a
-  sequence of keys and f is a function that will take the old value
-  and any supplied args and return the new value, and returns a new
-  nested structure.  If any levels do not exist, hash-maps will be
-  created."
-  ([m [k & ks] f & args]
-   (if ks
-     (assoc m k (apply update-in (get m k) ks f args))
-     (assoc m k (apply f (get m k) args)))))
+;; (defn update-in
+;;   "'Updates' a value in a nested associative structure, where ks is a
+;;   sequence of keys and f is a function that will take the old value
+;;   and any supplied args and return the new value, and returns a new
+;;   nested structure.  If any levels do not exist, hash-maps will be
+;;   created."
+;;   ([m [k & ks] f & args]
+;;    (if ks
+;;      (assoc m k (apply update-in (get m k) ks f args))
+;;      (assoc m k (apply f (get m k) args)))))
 
-(defn empty?
-  "Returns true if coll has no items - same as (not (seq coll)).
-  Please use the idiom (seq x) rather than (not (empty? x))"
-  [coll] (not (seq coll)))
+;; (defn empty?
+;;   "Returns true if coll has no items - same as (not (seq coll)).
+;;   Please use the idiom (seq x) rather than (not (empty? x))"
+;;   [coll] (not (seq coll)))
 
-(defn list? [x]
-  "Returns true if x is a list."
-  (instance? com.las3r.runtime.List x))
+;; (defn list? [x]
+;;   "Returns true if x is a list."
+;;   (instance? com.las3r.runtime.List x))
 
-(defn set? [x]
-  "Returns true if x is a hash set."
-  (instance? com.las3r.runtime.PersistentHashSet x))
+;; (defn set? [x]
+;;   "Returns true if x is a hash set."
+;;   (instance? com.las3r.runtime.PersistentHashSet x))
 
-(defn coll? [x]
-  "Returns true if x is a list, vector, hash map or hash set."
-  (or (list? x)
-      (vector? x)
-      (map? x)
-      (set? x)))
+;; (defn coll? [x]
+;;   "Returns true if x is a list, vector, hash map or hash set."
+;;   (or (list? x)
+;;       (vector? x)
+;;       (map? x)
+;;       (set? x)))
 
-(defn empty [coll]
-  "Returns an empty collection of the same category as coll, or nil"
-  (cond (list? coll) '()
-	(vector? coll) []
-	(map? coll) {}
-	(set? coll) #{}))
+;; (defn empty [coll]
+;;   "Returns an empty collection of the same category as coll, or nil"
+;;   (cond (list? coll) '()
+;; 	(vector? coll) []
+;; 	(map? coll) {}
+;; 	(set? coll) #{}))
 
-;;;;;;;;;;;;;;;;;;;; Generating Documentation ;;;;;;;;;;;;;;;;;;;;
-
-
-(defn print-doc [v]
-  (println "-------------------------")
-  (println (str (ns-name (get ^v :ns)) "/" (get ^v :name)))
-  (prn (get ^v :arglists))
-  (when (get ^v :macro)
-    (println "Macro"))
-  (println " " (get ^v :doc))
-  )
+;; ;;;;;;;;;;;;;;;;;;;; Generating Documentation ;;;;;;;;;;;;;;;;;;;;
 
 
-(defn print-textile-doc [v]
-  (println (str "**" (ns-name (get ^v :ns)) "/" (get ^v :name) "**") "<br>")
-  (println "<notextile>" (get ^v :arglists) "</notextile>" "<br>")
-  (when (get ^v :macro)
-    (println "Macro"))
-  (newline)
-  (println "<notextile>" (get ^v :doc) "</notextile>")
-  (println "<br>")
-  (println "<br>")
-  )
+;; (defn print-doc [v]
+;;   (println "-------------------------")
+;;   (println (str (ns-name (get ^v :ns)) "/" (get ^v :name)))
+;;   (prn (get ^v :arglists))
+;;   (when (get ^v :macro)
+;;     (println "Macro"))
+;;   (println " " (get ^v :doc))
+;;   )
 
 
-(defn print-special-doc
-  [name type anchor]
-  (println "-------------------------")
-  (println name)
-  (println type))
-
-(defmacro doc
-  "Prints documentation for a var or special form given its name"
-  [name]
-  (cond
-   (special-symbol? `~name)
-   `(print-special-doc '~name "Special Form")
-   :else
-   `(print-doc (var ~name))))
+;; (defn print-textile-doc [v]
+;;   (println (str "**" (ns-name (get ^v :ns)) "/" (get ^v :name) "**") "<br>")
+;;   (println "<notextile>" (get ^v :arglists) "</notextile>" "<br>")
+;;   (when (get ^v :macro)
+;;     (println "Macro"))
+;;   (newline)
+;;   (println "<notextile>" (get ^v :doc) "</notextile>")
+;;   (println "<br>")
+;;   (println "<br>")
+;;   )
 
 
-(defn doc-all-publics
-  "Prints documentation for all public vars in the given namespace."
-  [ns]
-  (doseq ea (vals (ns-publics ns))
-    (print-doc ea))
-  )
+;; (defn print-special-doc
+;;   [name type anchor]
+;;   (println "-------------------------")
+;;   (println name)
+;;   (println type))
 
-(defn textile-doc-all-publics
-  "Prints documentation for all public vars in the given namespace."
-  [ns]
-  (doseq ea (vals (ns-publics ns))
-    (print-textile-doc ea))
-  )
-
-
-(defn generate-api-doc
-  "Write all api documentation for the given namespace. Save that string to a file."
-  [ns] 
-  (let [output (new com.las3r.io.NaiveStringWriter)]
-    (binding [*out* output]
-      (textile-doc-all-publics ns))
-    (browse-save-file (str output) (str (. ns name) "_doc.txt"))))
+;; (defmacro doc
+;;   "Prints documentation for a var or special form given its name"
+;;   [name]
+;;   (cond
+;;    (special-symbol? `~name)
+;;    `(print-special-doc '~name "Special Form")
+;;    :else
+;;    `(print-doc (var ~name))))
 
 
+;; (defn doc-all-publics
+;;   "Prints documentation for all public vars in the given namespace."
+;;   [ns]
+;;   (doseq ea (vals (ns-publics ns))
+;;     (print-doc ea))
+;;   )
 
-;;;;;;;;;;;;;;;;;; Crude testing, until we're able to run real unit tests
-
-
-(defmacro assert-true
-  [form]
-  `(try (if ~form
-	  (print ".")
-	  (prn (list "Failure:  " '~form "   Expecting truthy")))
-	(catch Error e# (prn (list "Error in:  " '~form "   " (. e# message))))))
-
-
-(defmacro assert-false
-  [form]
-  `(try (if (not ~form)
-	  (print ".")
-	  (prn (list "Failure:  " '~form "   Expecting falsy")))
-	(catch Error e# (prn (list "Error in:  " '~form "   " (. e# message))))))
+;; (defn textile-doc-all-publics
+;;   "Prints documentation for all public vars in the given namespace."
+;;   [ns]
+;;   (doseq ea (vals (ns-publics ns))
+;;     (print-textile-doc ea))
+;;   )
 
 
-(defn run-tests []
-  (assert-true (= (reduce + '(1 2 3)) 6))
-  (assert-true (= (reduce + 0 '(1 2 3)) 6))
-  (assert-true (= (reverse '(0 1 2 3)) '(3 2 1 0)))
+;; (defn generate-api-doc
+;;   "Write all api documentation for the given namespace. Save that string to a file."
+;;   [ns] 
+;;   (let [output (new com.las3r.io.NaiveStringWriter)]
+;;     (binding [*out* output]
+;;       (textile-doc-all-publics ns))
+;;     (browse-save-file (str output) (str (. ns name) "_doc.txt"))))
 
-  (assert-true (and true 1 2 :horse))
-  (assert-false (and true nil))
 
-  (assert-true (= :unicorn (cond nil :horse
-				 nil :dog
-				 :else :unicorn)))
 
-  (assert-true (every? pos? '(1 2 3 4)))
-  (assert-false (every? pos? '(1 -1 3 4)))
+;; ;;;;;;;;;;;;;;;;;; Crude testing, until we're able to run real unit tests
 
-  (assert-true (not-every? pos? '(1 -1 3 4)))
-  (assert-false (not-every? pos? '(1 2 3 4)))
 
-  (assert-true (not-any? neg? '(1 1 3 4)))
+;; (defmacro assert-true
+;;   [form]
+;;   `(try (if ~form
+;; 	  (print ".")
+;; 	  (prn (list "Failure:  " '~form "   Expecting truthy")))
+;; 	(catch Error e# (prn (list "Error in:  " '~form "   " (. e# message))))))
 
-  (assert-true (= (some neg? '(1 1 -2 4)) true))
 
-  (assert-true (= (map (fn [ea] (+ ea 1)) '(0 1 2 3)) '(1 2 3 4)))
+;; (defmacro assert-false
+;;   [form]
+;;   `(try (if (not ~form)
+;; 	  (print ".")
+;; 	  (prn (list "Failure:  " '~form "   Expecting falsy")))
+;; 	(catch Error e# (prn (list "Error in:  " '~form "   " (. e# message))))))
 
-  (assert-true (= (take 2 '(1 2 2)) '(1 2)))
-  (assert-true (= (drop 2 '(1 2 2)) '(2)))
 
-  (assert-true (= (zipmap '(:a :b :c) '(1 2 3)) { :a 1 :b 2 :c 3}))
+;; (defn run-tests []
+;;   (assert-true (= (reduce + '(1 2 3)) 6))
+;;   (assert-true (= (reduce + 0 '(1 2 3)) 6))
+;;   (assert-true (= (reverse '(0 1 2 3)) '(3 2 1 0)))
 
-  (assert-true (= (merge {:a 1 :b 2} {:c 3}) { :a 1 :b 2 :c 3}))
+;;   (assert-true (and true 1 2 :horse))
+;;   (assert-false (and true nil))
 
-  (assert-true (= #{:a :b :c} (set (keys {:a 1 :b 2 :c 3}))))
-  (assert-true (= #{1 2 3} (set (vals {:a 1 :b 2 :c 3}))))
+;;   (assert-true (= :unicorn (cond nil :horse
+;; 				 nil :dog
+;; 				 :else :unicorn)))
 
-  (assert-true (= (with-meta (lazy-cons nil nil) {:a 1}) (lazy-cons nil nil)))
+;;   (assert-true (every? pos? '(1 2 3 4)))
+;;   (assert-false (every? pos? '(1 -1 3 4)))
 
-  ;; Test non-Obj equality
-  (assert-false (= (new flash.display.Sprite) (new flash.display.Sprite)))
-  (assert-true (let [s1 (new flash.display.Sprite)
-		     s2 s1]
-		 (= s1 s2)))
+;;   (assert-true (not-every? pos? '(1 -1 3 4)))
+;;   (assert-false (not-every? pos? '(1 2 3 4)))
 
-  ;; Check that overwriting keys works.
-  (assert-true (= (get (assoc '{:a 2} :a 1) :a) 1))
+;;   (assert-true (not-any? neg? '(1 1 3 4)))
 
-  ;; This was failing verification because the 'do' was being emitted as a statement..
-  (assert-true (= 1 (if true (do (doseq a (quote (1 2)) a) 1))))
+;;   (assert-true (= (some neg? '(1 1 -2 4)) true))
 
-  (assert-true (let [obj (new Object)]
-		 (set! (. obj nums) [])
-		 (set! (. obj funcs) [])
-		 (doseq ea '[1 2 3 4 5]
-		   (set! (. obj funcs) (conj
-					(. obj funcs)
-					(fn [] (set! (. obj nums) (conj (. obj nums) ea)))
-					)))
-		 (doseq ea (. obj funcs) (ea))
-		 (= [1 2 3 4 5] (. obj nums))
-		 ))
+;;   (assert-true (= (map (fn [ea] (+ ea 1)) '(0 1 2 3)) '(1 2 3 4)))
+
+;;   (assert-true (= (take 2 '(1 2 2)) '(1 2)))
+;;   (assert-true (= (drop 2 '(1 2 2)) '(2)))
+
+;;   (assert-true (= (zipmap '(:a :b :c) '(1 2 3)) { :a 1 :b 2 :c 3}))
+
+;;   (assert-true (= (merge {:a 1 :b 2} {:c 3}) { :a 1 :b 2 :c 3}))
+
+;;   (assert-true (= #{:a :b :c} (set (keys {:a 1 :b 2 :c 3}))))
+;;   (assert-true (= #{1 2 3} (set (vals {:a 1 :b 2 :c 3}))))
+
+;;   (assert-true (= (with-meta (lazy-cons nil nil) {:a 1}) (lazy-cons nil nil)))
+
+;;   ;; Test non-Obj equality
+;;   (assert-false (= (new flash.display.Sprite) (new flash.display.Sprite)))
+;;   (assert-true (let [s1 (new flash.display.Sprite)
+;; 		     s2 s1]
+;; 		 (= s1 s2)))
+
+;;   ;; Check that overwriting keys works.
+;;   (assert-true (= (get (assoc '{:a 2} :a 1) :a) 1))
+
+;;   ;; This was failing verification because the 'do' was being emitted as a statement..
+;;   (assert-true (= 1 (if true (do (doseq a (quote (1 2)) a) 1))))
+
+;;   (assert-true (let [obj (new Object)]
+;; 		 (set! (. obj nums) [])
+;; 		 (set! (. obj funcs) [])
+;; 		 (doseq ea '[1 2 3 4 5]
+;; 		   (set! (. obj funcs) (conj
+;; 					(. obj funcs)
+;; 					(fn [] (set! (. obj nums) (conj (. obj nums) ea)))
+;; 					)))
+;; 		 (doseq ea (. obj funcs) (ea))
+;; 		 (= [1 2 3 4 5] (. obj nums))
+;; 		 ))
   
-  ;;namespace stuff
-  (let [sym (gensym)]
-    (assert-false (find-ns sym))
-    (create-ns sym)
-    (assert-true (find-ns sym))
-    (remove-ns sym)
-    (assert-false (find-ns sym)))
+;;   ;;namespace stuff
+;;   (let [sym (gensym)]
+;;     (assert-false (find-ns sym))
+;;     (create-ns sym)
+;;     (assert-true (find-ns sym))
+;;     (remove-ns sym)
+;;     (assert-false (find-ns sym)))
   
-  (assert-true (= [1 2] (-> [] (conj 1) (conj 2))))
+;;   (assert-true (= [1 2] (-> [] (conj 1) (conj 2))))
 
-  ;;Test destructuring binds
-  (assert-true (= '(1 2 3) (let [[a b c] [1 2 3]] (list a b c))))
+;;   ;;Test destructuring binds
+;;   (assert-true (= '(1 2 3) (let [[a b c] [1 2 3]] (list a b c))))
   
-  (assert-true (= '(4 5) (let [[a b c & d] [1 2 3 4 5]] d)))
+;;   (assert-true (= '(4 5) (let [[a b c & d] [1 2 3 4 5]] d)))
   
-  (assert-true (= '[1 2 3 4 5] (let [[a b c & d :as e] [1 2 3 4 5]] e)))
+;;   (assert-true (= '[1 2 3 4 5] (let [[a b c & d :as e] [1 2 3 4 5]] e)))
   
-  (assert-true (= '(1 2 3 4 5) (let [[a b c & d :as e] '(1 2 3 4 5)] e)))
+;;   (assert-true (= '(1 2 3 4 5) (let [[a b c & d :as e] '(1 2 3 4 5)] e)))
   
-  (assert-true (= '[1 2 3 4] (let [[[x1 y1][x2 y2]] [[1 2] [3 4]]] [x1 y1 x2 y2])))
+;;   (assert-true (= '[1 2 3 4] (let [[[x1 y1][x2 y2]] [[1 2] [3 4]]] [x1 y1 x2 y2])))
   
-  (assert-true (= '["a" "s" ("d" "j" "h" "h" "f" "d" "a" "s") "asdjhhfdas"]
-		  (let [[a b & c :as str] "asdjhhfdas"] [a b c str])))
+;;   (assert-true (= '["a" "s" ("d" "j" "h" "h" "f" "d" "a" "s") "asdjhhfdas"]
+;; 		  (let [[a b & c :as str] "asdjhhfdas"] [a b c str])))
   
-  ;; "Map binding forms"
-  (assert-true (= [5 3 6 {:c 6, :a 5}] (let [{a :a, b :b, c :c, :as m :or {a 2 b 3}} {:a 5 :c 6}] [a b c m])))
+;;   ;; "Map binding forms"
+;;   (assert-true (= [5 3 6 {:c 6, :a 5}] (let [{a :a, b :b, c :c, :as m :or {a 2 b 3}} {:a 5 :c 6}] [a b c m])))
 
-  ;; "pull apart just about anything"
-  (assert-true (= (let [{j :j, k :k, i :i, [r s & t :as v] :ivec, :or {i 12 j 13}}
-			{:j 15 :k 16 :ivec [22 23 24 25]}]
-		    [i j k r s t v])
-		  '[12 15 16 22 23 (24 25) [22 23 24 25]]))
+;;   ;; "pull apart just about anything"
+;;   (assert-true (= (let [{j :j, k :k, i :i, [r s & t :as v] :ivec, :or {i 12 j 13}}
+;; 			{:j 15 :k 16 :ivec [22 23 24 25]}]
+;; 		    [i j k r s t v])
+;; 		  '[12 15 16 22 23 (24 25) [22 23 24 25]]))
 
-  ;; Test ranges
-  (assert-true (= '(0 1 2 3 4 5) (range 6)))
-  (assert-true (= '(1 2 3 4 5) (range 1 6)))
+;;   ;; Test ranges
+;;   (assert-true (= '(0 1 2 3 4 5) (range 6)))
+;;   (assert-true (= '(1 2 3 4 5) (range 1 6)))
 
-  ;; line-seq with line-feed
-  (let [s (line-seq (new com.las3r.jdk.io.BufferedReader (new com.las3r.jdk.io.StringReader "hello\ndude")))]
-    (assert-true (= (first s) "hello"))
-    (assert-true (= (second s) "dude")))
+;;   ;; line-seq with line-feed
+;;   (let [s (line-seq (new com.las3r.jdk.io.BufferedReader (new com.las3r.jdk.io.StringReader "hello\ndude")))]
+;;     (assert-true (= (first s) "hello"))
+;;     (assert-true (= (second s) "dude")))
 
-  ;; now with carriage return..
-  (let [s (line-seq (new com.las3r.jdk.io.BufferedReader (new com.las3r.jdk.io.StringReader "hello\r\ndude")))]
-    (assert-true (= (first s) "hello"))
-    (assert-true (= (second s) "dude")))
+;;   ;; now with carriage return..
+;;   (let [s (line-seq (new com.las3r.jdk.io.BufferedReader (new com.las3r.jdk.io.StringReader "hello\r\ndude")))]
+;;     (assert-true (= (first s) "hello"))
+;;     (assert-true (= (second s) "dude")))
 
-  ;; For comprehension
-  (assert-true (= (take 3 (for [x (range 100) :when (odd? x)]  [x]))
-		  '([1][3][5])))
+;;   ;; For comprehension
+;;   (assert-true (= (take 3 (for [x (range 100) :when (odd? x)]  [x]))
+;; 		  '([1][3][5])))
 
-  ;; Regexes
-  (assert-false (apply identical? (map (fn [x] #"a") [1 2]))) ;; regexes shoudn't be the same object
+;;   ;; Regexes
+;;   (assert-false (apply identical? (map (fn [x] #"a") [1 2]))) ;; regexes shoudn't be the same object
 
-  (assert-true (= (re-match #"app(le)" "The bear ate the apple.")
-		  '["apple" "le"]
-		  ))
+;;   (assert-true (= (re-match #"app(le)" "The bear ate the apple.")
+;; 		  '["apple" "le"]
+;; 		  ))
 
-  (assert-true (= (re-match #"pineapp(le)" "The bear ate the apple.") nil))
+;;   (assert-true (= (re-match #"pineapp(le)" "The bear ate the apple.") nil))
 
-  (assert-true (= (re-matches (re "app(le)" "g") "The bear ate the apple.")
-		  '(["apple" "le"])
-		  ))
+;;   (assert-true (= (re-matches (re "app(le)" "g") "The bear ate the apple.")
+;; 		  '(["apple" "le"])
+;; 		  ))
 
-  (assert-true (= (re-matches (re "app(le)" "g") "The bear ate my apple and your apple, too.")
-		  '(["apple" "le"]["apple" "le"])
-		  ))
+;;   (assert-true (= (re-matches (re "app(le)" "g") "The bear ate my apple and your apple, too.")
+;; 		  '(["apple" "le"]["apple" "le"])
+;; 		  ))
 
-  (assert-true (= (re-matches (re "pineapp(le)" "g") "The bear ate my apple and your apple, too.") nil))
+;;   (assert-true (= (re-matches (re "pineapp(le)" "g") "The bear ate my apple and your apple, too.") nil))
 
-  ;; Regexes - simplified syntax reader
+;;   ;; Regexes - simplified syntax reader
 
-  (assert-true (= (re-match #"foo" "foo") ["foo"]))
-  (assert-true (= (re-match #"\w*" "foo!@#$") ["foo"]))
-  (assert-true (= (re-match #"\t" "\t") ["\t"]))
-  (assert-true (= (re-match #"\a" "\u0007") ["\u0007"]))
-  (assert-true (= (re-match #"\x08" "\b") ["\b"]))
-  (assert-true (= (re-match #"\x31" "1") ["1"]))
-  (assert-true (= (re-match #"\061" "1") ["1"]))
-  (assert-true (= (re-match #"\bfoo" "foo") ["foo"]))
-  (assert-true (= (re-match #"\"" "\"") ["\""]))
-  (assert-true (= (re-match #"\\" "\\") ["\\"]))
-  (assert-true (= (re-match #"\(" "(") ["("]))
-  (assert-true (= (re-match #"foo"i "fOo") ["fOo"]))
+;;   (assert-true (= (re-match #"foo" "foo") ["foo"]))
+;;   (assert-true (= (re-match #"\w*" "foo!@#$") ["foo"]))
+;;   (assert-true (= (re-match #"\t" "\t") ["\t"]))
+;;   (assert-true (= (re-match #"\a" "\u0007") ["\u0007"]))
+;;   (assert-true (= (re-match #"\x08" "\b") ["\b"]))
+;;   (assert-true (= (re-match #"\x31" "1") ["1"]))
+;;   (assert-true (= (re-match #"\061" "1") ["1"]))
+;;   (assert-true (= (re-match #"\bfoo" "foo") ["foo"]))
+;;   (assert-true (= (re-match #"\"" "\"") ["\""]))
+;;   (assert-true (= (re-match #"\\" "\\") ["\\"]))
+;;   (assert-true (= (re-match #"\(" "(") ["("]))
+;;   (assert-true (= (re-match #"foo"i "fOo") ["fOo"]))
 
-  ;; Test class handling necessary for multimethods
-  (assert-true (contains? (bases flash.display.Sprite) flash.display.DisplayObjectContainer))
-  (assert-true (contains? (bases flash.display.Sprite) flash.display.IBitmapDrawable))
-  (assert-true (contains? (bases flash.display.Sprite) flash.events.IEventDispatcher))
-  (assert-true (not (contains? (bases flash.display.Sprite) flash.display.DisplayObject)))
-  (assert-true (not (contains? (bases flash.display.Sprite) flash.display.DisplayObject)))
-  (assert-true (contains? (supers flash.display.Sprite) flash.display.DisplayObject))
-  (assert-true (contains? (supers flash.display.Sprite) Object))
-  (assert-true (not (contains? (supers flash.display.Sprite) flash.display.Sprite)))
-  (assert-true (= flash.display.Sprite (class (new flash.display.Sprite))))
+;;   ;; Test class handling necessary for multimethods
+;;   (assert-true (contains? (bases flash.display.Sprite) flash.display.DisplayObjectContainer))
+;;   (assert-true (contains? (bases flash.display.Sprite) flash.display.IBitmapDrawable))
+;;   (assert-true (contains? (bases flash.display.Sprite) flash.events.IEventDispatcher))
+;;   (assert-true (not (contains? (bases flash.display.Sprite) flash.display.DisplayObject)))
+;;   (assert-true (not (contains? (bases flash.display.Sprite) flash.display.DisplayObject)))
+;;   (assert-true (contains? (supers flash.display.Sprite) flash.display.DisplayObject))
+;;   (assert-true (contains? (supers flash.display.Sprite) Object))
+;;   (assert-true (not (contains? (supers flash.display.Sprite) flash.display.Sprite)))
+;;   (assert-true (= flash.display.Sprite (class (new flash.display.Sprite))))
 
-  (let [m (new com.las3r.runtime.MultiFn *runtime* class :default)
-	m (. m (addMethod flash.display.Sprite (fn [s] (. s x))))
-	m (. m (addMethod flash.display.DisplayObject (fn [s] -1)))
-	m (. m (addMethod :default (fn [s] -5)))]
-    (assert-true (= (m (new flash.display.Shape)) -1))
-    (assert-true (= (m (new flash.display.Sprite)) 0))
-    (assert-true (= (m "lkdjfdkjf") -5)) ;; Should use :default
-    )
+;;   (let [m (new com.las3r.runtime.MultiFn *runtime* class :default)
+;; 	m (. m (addMethod flash.display.Sprite (fn [s] (. s x))))
+;; 	m (. m (addMethod flash.display.DisplayObject (fn [s] -1)))
+;; 	m (. m (addMethod :default (fn [s] -5)))]
+;;     (assert-true (= (m (new flash.display.Shape)) -1))
+;;     (assert-true (= (m (new flash.display.Sprite)) 0))
+;;     (assert-true (= (m "lkdjfdkjf") -5)) ;; Should use :default
+;;     )
 
-  )
+;;   )
 
-;;(run-tests)
+;; ;;(run-tests)
 
 
 
