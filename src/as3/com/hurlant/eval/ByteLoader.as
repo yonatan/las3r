@@ -67,7 +67,7 @@ package com.hurlant.eval {
 					out.writeByte(abc_header[j]);
 				}
 				// avoid newactivation in script init
-				replaceLastNewActivationInsn(abc);
+				//replaceLastNewActivationInsn(abc);
 				// set ABC length
 				out.writeInt(abc.length);
 				out.writeBytes(abc, 0, abc.length);

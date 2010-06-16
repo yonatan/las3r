@@ -100,6 +100,16 @@ package com.las3r.gen{
 		}
 
 
+		public function dontPushNewActivationScope():void{
+			asm.I_getscopeobject(0);
+			asm.I_dup();
+			asm.I_pushscope();
+			currentActivation = { scopeIndex: asm.currentLocalScopeDepth - 1, nextSlot: 1 };
+			var i:int = asm.getTemp();
+			asm.I_setlocal(i);
+			scopeToLocalMap = scopeToLocalMap.cons(i);
+		}
+
 
 		/*
 		* For the current method, push 'this' onto the scope stack. 'this' is initially found
