@@ -1,0 +1,236 @@
+<!-- Parsing swf file:/home/yonatan/src/play/las3r/tmp/fn-test-2.swf -->
+<!-- ?xml version="1.0" encoding="UTF-8"? -->
+<swf xmlns='http://macromedia/2003/swfx' version='9' framerate='12' size='8000x6000' compressed='false' >
+  <!-- framecount=1 length=760 -->
+  <FileAttributes hasMetadata='false' actionScript3='true' suppressCrossDomainCaching='false' swfRelativeUrls='false' useNetwork='false'/>
+  <DoABC>
+    16 0 minor version
+    46 0 major version
+    1 Integer Constant Pool Entries
+    2 Unsigned Integer Constant Pool Entries
+    0
+    1 Floating Point Constant Pool Entries
+    29 String Constant Pool Entries
+     
+     fn-test-2
+     Object
+     01957B6F95EAA21DA568715F9702FED050E63519
+     $cinit
+     $construct
+     const__3
+     const__2
+     const__0
+     const__1
+     #=(var las3r.core/foo)
+     readString
+     bar
+     :arglists
+     ([])
+     rt
+     anonymous_at_234
+     length
+     com.las3r.errors
+     RuntimeError
+     Function invoked with invalid arity, expecting 0 argument(s).
+     bindRoot
+     com.las3r.runtime
+     RT
+     map
+     setMeta
+     toplevelExceptionHandler
+     modules
+    5 Namespace Constant Pool Entries
+     
+     
+     com.las3r.errors
+     com.las3r.runtime
+    1 Namespace Set Constant Pool Entries
+    18 MultiName Constant Pool Entries
+    :Object
+    :01957B6F95EAA21DA568715F9702FED050E63519
+    :const__3
+    :const__2
+    :const__0
+    :const__1
+    :readString
+    :rt
+    :length
+    com.las3r.errors:RuntimeError
+    :bindRoot
+    com.las3r.runtime:RT
+    :map
+    :setMeta
+    :toplevelExceptionHandler
+    :modules
+    :fn-test-2
+    5 Method Entries
+    $construct(): 
+    $cinit(): 
+    anonymous_at_234(): 
+    fn-test-2(,,): 
+    (): 
+    0 Metadata Entries
+    1 Instance Entries
+    :01957B6F95EAA21DA568715F9702FED050E63519 extends :Object 
+    0 Traits Entries
+    1 Class Entries
+    :01957B6F95EAA21DA568715F9702FED050E63519 extends Class 
+    4 Traits Entries
+    :const__3
+    :const__2
+    :const__0
+    :const__1
+    1 Script Entries
+    script0 
+    0 Traits Entries
+    5 Method Bodies
+    function :01957B6F95EAA21DA568715F9702FED050E63519:::01957B6F95EAA21DA568715F9702FED050E63519():
+    maxStack:2 localCount:1 initScopeDepth:2 maxScopeDepth:3
+        getlocal0     	
+        pushscope     	
+        getlocal0     	
+        constructsuper	(0)
+        returnvoid    	
+    0 Extras
+    0 Traits Entries
+
+    function :01957B6F95EAA21DA568715F9702FED050E63519:::01957B6F95EAA21DA568715F9702FED050E63519$cinit():
+    maxStack:0 localCount:1 initScopeDepth:0 maxScopeDepth:0
+        returnvoid    	
+    0 Extras
+    0 Traits Entries
+
+    var null::anonymous_at_234():
+    maxStack:2 localCount:4 initScopeDepth:4 maxScopeDepth:5
+        getlex        	:01957B6F95EAA21DA568715F9702FED050E63519
+        setlocal2     	
+        getlex        	:01957B6F95EAA21DA568715F9702FED050E63519
+        getproperty   	:rt
+        setlocal3     	
+        getlocal1     	
+        getproperty   	:length
+        pushuint      	0	// 0x0
+        ifeq          	L0
+
+        getlex        	com.las3r.errors:RuntimeError
+        pushstring    	"Function invoked with invalid arity, expecting 0 argument(s)."
+        construct     	(1)
+        throw         	
+    L0: getlocal0     	
+        pushscope     	
+    L1: label         	
+        getlocal2     	
+        getproperty   	:const__2
+        returnvalue   	
+    0 Extras
+    0 Traits Entries
+
+    var null::fn-test-2(, , ):
+    maxStack:7 localCount:8 initScopeDepth:2 maxScopeDepth:7
+        getlocal0     	
+        pushscope     	
+        newactivation 	
+        dup           	
+        pushscope     	
+        setlocal      	4
+        findpropstrict	:Object
+        getproperty   	:Object
+        dup           	
+        pushscope     	
+        newclass      	:01957B6F95EAA21DA568715F9702FED050E63519
+        dup           	
+        popscope      	
+        getglobalscope	
+        swap          	
+        initproperty  	:01957B6F95EAA21DA568715F9702FED050E63519
+        dup           	
+        getlocal1     	
+        pushstring    	"#=(var las3r.core/foo)"
+        callproperty  	:readString (1)
+        setslot       	1
+        dup           	
+        getlocal1     	
+        pushstring    	"bar"
+        callproperty  	:readString (1)
+        setslot       	2
+        dup           	
+        getlocal1     	
+        pushstring    	":arglists"
+        callproperty  	:readString (1)
+        setslot       	3
+        dup           	
+        getlocal1     	
+        pushstring    	"([])"
+        callproperty  	:readString (1)
+        setslot       	4
+        pop           	
+        getlex        	:01957B6F95EAA21DA568715F9702FED050E63519
+        getlocal1     	
+        setproperty   	:rt
+        getlex        	:01957B6F95EAA21DA568715F9702FED050E63519
+        setlocal      	5
+        getlex        	:01957B6F95EAA21DA568715F9702FED050E63519
+        getproperty   	:rt
+        setlocal      	6
+    L0: label         	
+        getlocal2     	
+        pushnull      	
+        getlocal      	5
+        getproperty   	:const__3
+        dup           	
+        newfunction   	anonymous_at_234
+        callpropvoid  	:bindRoot (1)
+        dup           	
+        getlex        	com.las3r.runtime:RT
+        getlocal      	5
+        getproperty   	:const__0
+        getlocal      	5
+        getproperty   	:const__1
+        callproperty  	:map (2)
+        callpropvoid  	:setMeta (1)
+        call          	(1)
+    L1: label         	
+        jump          	L2
+
+    L3: label         	
+        getlocal0     	
+        pushscope     	
+        getlocal      	4
+        pushscope     	
+        newcatch      	0
+        dup           	
+        pushscope     	
+        setlocal      	7
+        getlocal3     	
+        swap          	
+        pushnull      	
+        swap          	
+        call          	(1)
+        popscope      	
+        kill          	7
+        returnvoid    	
+    L2: returnvoid    	
+    1 Extras
+    :toplevelExceptionHandler type: from:73 to:105 target:110
+    0 Traits Entries
+
+    function script0::script0$init():
+    maxStack:2 localCount:2 initScopeDepth:0 maxScopeDepth:2
+        getlocal0     	
+        pushscope     	
+        getscopeobject	0
+        dup           	
+        pushscope     	
+        setlocal1     	
+        newfunction   	fn-test-2
+        getlex        	com.las3r.runtime:RT
+        getproperty   	:modules
+        swap          	
+        setproperty   	:fn-test-2
+        returnvoid    	
+    0 Extras
+    0 Traits Entries
+
+  </DoABC>
+  <ShowFrame/>
+</swf>
