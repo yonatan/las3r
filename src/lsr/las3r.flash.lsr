@@ -1,32 +1,32 @@
-;; ;; Collected Flash helpers
+;; Collected Flash helpers
 
-;; (in-ns 'las3r.flash)
-;; (las3r.core/refer 'las3r.core :exclude '(run-tests))
+(in-ns 'las3r.flash)
+(las3r.core/refer 'las3r.core :exclude '(run-tests))
 
-;; (import '(flash.display Graphics Sprite DisplayObject DisplayObjectContainer))
+(import '(flash.display Graphics Sprite DisplayObject DisplayObjectContainer))
 
-;; ;; Display List helpers:
+;; Display List helpers:
 
-;; (defn remove-all-children!
-;;   "Remove all children from a DisplayObjectContainer."
-;;   [#^DisplayObject s]
-;;   (loop [] (if (> (. s numChildren) 0)
-;; 	     (do (. s (removeChildAt 0))
-;; 		 (recur))))
-;;   s)
+(defn remove-all-children!
+  "Remove all children from a DisplayObjectContainer."
+  [#^DisplayObject s]
+  (loop [] (if (> (. s numChildren) 0)
+	     (do (. s (removeChildAt 0))
+		 (recur))))
+  s)
 
-;; (defn set-pos!
-;;   "Set x and y of given DisplayObject."
-;;   [#^DisplayObject s x y]
-;;   (set! (. s x) x)
-;;   (set! (. s y) y)
-;;   s)
+(defn set-pos!
+  "Set x and y of given DisplayObject."
+  [#^DisplayObject s x y]
+  (set! (. s x) x)
+  (set! (. s y) y)
+  s)
 
 
-;; (defn clear-graphics-of!
-;;   "Clear graphics of given DisplayObject."
-;;   [#^DisplayObject s]
-;;   (. (. s graphics) (clear)))
+(defn clear-graphics-of!
+  "Clear graphics of given DisplayObject."
+  [#^DisplayObject s]
+  (. (. s graphics) (clear)))
 
 
 

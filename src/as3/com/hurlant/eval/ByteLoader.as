@@ -33,18 +33,6 @@ package com.hurlant.eval {
 			0x00, 0x00                                              // Tag type=0 (End), length=0 -- ignored by the player, but reuired by the spec (and swfdump).
 		];
 		
-
-		// Temporary hack, tries to replace the last newactivation insn with
-		// a getglobalscope insn. 
-
-		private static function replaceLastNewActivationInsn(b:ByteArray):void {
-			for(var i:uint = b.length-1; i; i--) {
-				if(b[i] == 0x57) { // 0x57 = newactivation
-					b[i] = 0x64; // 0x64 = getglobalscope
-					return;
-				}
-			}
-		}
 		
 		/**
 		* Wraps the ABC bytecode inside the simplest possible SWF file, for
@@ -66,13 +54,10 @@ package com.hurlant.eval {
 				for (var j:int=0;j<abc_header.length;j++) {
 					out.writeByte(abc_header[j]);
 				}
-				// avoid newactivation in script init
-				//replaceLastNewActivationInsn(abc);
 				// set ABC length
 				out.writeInt(abc.length);
 				out.writeBytes(abc, 0, abc.length);
 			}
-
 			for (i=0;i<swf_end.length;i++) {
 				out.writeByte(swf_end[i]);
 			}

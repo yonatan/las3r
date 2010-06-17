@@ -134,7 +134,6 @@ package com.las3r.runtime{
 		protected function loadForm(form:Object, callback:Function, errorCallback:Function):void{
 			var moduleId:String = GUID.create();
 			var current:SWFGen = new SWFGen(rt, moduleId);
-			trace("loadForm - moduleId: " + moduleId);
 			try{
 				Var.pushBindings(rt,
 					RT.map(
@@ -149,7 +148,7 @@ package com.las3r.runtime{
 
 			var aot:SWFGen = SWFGen(rt.AOT_MODULE_SWF.get());
 			if(aot != null){ aot.addExpr(expr); }
-			trace("aot: " + aot);
+
 			current.addExpr(expr);
 
 			var swfBytes:ByteArray = current.emit();
@@ -259,7 +258,6 @@ package com.las3r.runtime{
 			}
 			Var.pushBindings(_rt, RT.map(LINE, line));
 			try{
-				trace( "analyzing: " + form + " - " + _rt.printString(form) );
 				//todo symbol macro expansion?
 				if(form === null)
 				return NilExpr.instance;
@@ -349,17 +347,15 @@ package com.las3r.runtime{
 		}
 
 		private function analyzeSeq(context:C, form:ISeq , name:String ):Expr {
-			trace("analyzeSeq: " + _rt.printString(form));
 			var me:Object = macroexpand1(form);
 			if(me != form)
 			return analyze(context, me, name);
-			
+
 			var op:Object = RT.first(form);
 			if(Util.equal(_rt.FN, op)){
 				return FnExpr.parse(this, context, form);
 			}
 			else if(specialParsers.valAt(op) != null){
-				trace("special: " + specialParsers.valAt(op));
 				var parse:Function = specialParsers.valAt(op) as Function;
 				return parse(this, context, form);
 			}
