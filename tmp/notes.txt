@@ -1,0 +1,168 @@
+testing with (fn [] 0)
+
+
+
+(fdb) br Compiler.as:383
+
+
+
+Execution halted, seqToArray() at RT.as:893
+ 893            public static function seqToArray(seq:ISeq):Array{
+(fdb) f
+ 326                            return (f as Function).apply(null, RT.seqToArray(arglist));
+Execution halted at 0x00009b27 (39719)
+Player did not respond to the command as expected; command aborted.
+
+
+
+(fdb) br RT.as:893
+
+
+new suspect:
+
+
+Breakpoint 5, List.as:16
+ 16    		public static function creator(...args:Array):List{
+(fdb) f
+Execution halted, Compiler.as:307
+
+found it?? exception after stepping on last breakpoit #6 hit -
+
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Object 4047022089, class='com.las3r.runtime::PersistentVector']
+(fdb) c
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Function 4066018561, name='Function']
+(fdb) c
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Function 4132524545, name='Function']
+(fdb) c
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Function 4045629089, name='Function']
+(fdb) c
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Function 4045633857, name='Function']
+(fdb) c
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Function 4045648257, name='Function']
+(fdb) c
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Function 4045629089, name='Function']
+(fdb) c
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Function 4045633857, name='Function']
+(fdb) c
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Function 4045561177, name='MethodClosure']
+(fdb) c
+Breakpoint 5, List.as:16
+ 16    		public static function creator(...args:Array):List{
+2: root = Variable root unknown
+(fdb) c
+Breakpoint 6, get() at Var.as:94
+ 94    			return root;
+2: root = [Function 4045671137, name='Function']
+(fdb) s
+Execution halted, Compiler.as:307
+ 307   				var msg:String = "CompilerError at " + SOURCE.get() + ":" + int(LINE.get()) + ":  " + (e is Error ? Error(e).message : String(e));
+2: root = Variable root unknown
+(fdb )
+
+
+
+
+
+
+
+
+Maybe the problem isn't with generated abc at all?
+
+    (fdb) r bin/repl.swf
+    Attempting to launch and connect to Player using URL
+    bin/repl.swf
+    Player connected; session starting.
+    [SWF] /home/yonatan/src/play/las3r/bin/repl.swf - 718,524 bytes after decompression
+    
+    Set breakpoints and then type 'continue' to resume the session.
+    (fdb) info breakpoints
+    Num Type           Disp Enb Address    What
+    4   breakpoint     keep y   0x00000853 in loadBytes() at ByteLoader.as:96
+    5   breakpoint     keep y   0x00000760 List.as:16
+    6   breakpoint     keep y   0x00000000 in get() at Var.as:94
+Disabling breakpoint 6 to avoid noise
+    (fdb) disab 6
+    (fdb) c
+    Breakpoint 4, loadBytes() at ByteLoader.as:96
+This loads las3r.core.swf
+     96    		public static function loadBytes(bytes:*, _callback:Function = null, inplace:Boolean=false):Boolean {
+    (fdb) c
+    [SWF] /home/yonatan/src/play/las3r/bin/repl.swf/[[DYNAMIC]]/1 - 273,291 bytes after decompression
+    Breakpoint 4, loadBytes() at ByteLoader.as:96
+This loads las3r.flash.swf
+     96    		public static function loadBytes(bytes:*, _callback:Function = null, inplace:Boolean=false):Boolean {
+    (fdb) c
+    [SWF] /home/yonatan/src/play/las3r/bin/repl.swf/[[DYNAMIC]]/2 - 2,175 bytes after decompression
+    [trace] loadForm - moduleId: 03742DF8415309B3BBC0092F292A86CD259383C1
+    [trace] analyzing: [object List] - (in-ns (quote las3r.core))
+    [trace] analyzeSeq: (in-ns (quote las3r.core))
+    [trace] analyzing: in-ns - in-ns
+    [trace] analyzing: [object List] - (quote las3r.core)
+    [trace] analyzeSeq: (quote las3r.core)
+    [trace] special: function Function() {}
+    [trace] aot: null
+    Breakpoint 4, loadBytes() at ByteLoader.as:96
+This is the evaluation of (in-ns 'las3r.core) -- last time loadBytes is called!
+     96    		public static function loadBytes(bytes:*, _callback:Function = null, inplace:Boolean=false):Boolean {
+    (fdb) c
+Typed (fn [] 0) into the repl
+    [SWF] /home/yonatan/src/play/las3r/bin/repl.swf/[[DYNAMIC]]/3 - 556 bytes after decompression
+    [trace] loadForm - moduleId: 8982752403425115438E6CB3DB9C9F7696821A5B
+    [trace] analyzing: [object List] - (fn [] 0)
+    [trace] analyzeSeq: (fn [] 0)
+    Breakpoint 5, List.as:16
+     16    		public static function creator(...args:Array):List{
+    (fdb) e 6
+Enabled breakpoint 6
+    (fdb) c
+    Breakpoint 6, get() at Var.as:94
+     94    			return root;
+    (fdb) print root
+    $1 = [Function 4045538977, name='Function']
+Single step, and get 
+    (fdb) s
+    Execution halted, Compiler.as:307
+     307   				var msg:String = "CompilerError at " + SOURCE.get() + ":" + int(LINE.get()) + ":  " + (e is Error ? Error(e).message : String(e));
+    (fdb) 
+
+
+
+
+    (fdb) c
+    Breakpoint 6, get() at Var.as:94
+     94    			return root;
+    (fdb) s
+    Execution halted, Compiler.as:307
+     307   				var msg:String = "CompilerError at " + SOURCE.get() + ":" + int(LINE.get()) + ":  " + (e is Error ? Error(e).message : String(e));
+    (fdb) s
+    Execution halted, get() at Var.as:89
+     89    		public function get():Object{
+    (fdb) s
+     90    			var b:Box = getBinding();
+    (fdb) s
+    Execution halted, getBinding() at Var.as:175
+     175   		public function getBinding():Box{
+    (fdb) print e
+    $6 = undefined
+    (fdb) c
+    [UnloadSWF] /home/yonatan/src/play/las3r/bin/repl.swf
+    Player session terminate
+    d
