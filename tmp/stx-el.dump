@@ -1,0 +1,172 @@
+<!-- Parsing swf file:/home/yonatan/src/play/las3r/tmp/stx-el.swf -->
+<!-- ?xml version="1.0" encoding="UTF-8"? -->
+<swf xmlns='http://macromedia/2003/swfx' version='9' framerate='12' size='8000x6000' compressed='false' >
+  <!-- framecount=1 length=481 -->
+  <FileAttributes hasMetadata='false' actionScript3='true' suppressCrossDomainCaching='false' swfRelativeUrls='false' useNetwork='false'/>
+  <DoABC>
+    16 0 minor version
+    46 0 major version
+    1 Integer Constant Pool Entries
+    1 Unsigned Integer Constant Pool Entries
+    1 Floating Point Constant Pool Entries
+    18 String Constant Pool Entries
+     
+     stx-el
+     Object
+     FCD1C9DAACB795DA20284DE0C6040D2F71334799
+     $cinit
+     $construct
+     const__0
+     #=(var las3r.core/concat)
+     readString
+     rt
+     get
+     com.las3r.runtime
+     IFn
+     invoke0
+     toplevelExceptionHandler
+     RT
+     modules
+    4 Namespace Constant Pool Entries
+     
+     
+     com.las3r.runtime
+    1 Namespace Set Constant Pool Entries
+    13 MultiName Constant Pool Entries
+    :Object
+    :FCD1C9DAACB795DA20284DE0C6040D2F71334799
+    :const__0
+    :readString
+    :rt
+    :get
+    com.las3r.runtime:IFn
+    :invoke0
+    :toplevelExceptionHandler
+    com.las3r.runtime:RT
+    :modules
+    :stx-el
+    4 Method Entries
+    $construct(): 
+    $cinit(): 
+    stx-el(,,): 
+    (): 
+    0 Metadata Entries
+    1 Instance Entries
+    :FCD1C9DAACB795DA20284DE0C6040D2F71334799 extends :Object 
+    0 Traits Entries
+    1 Class Entries
+    :FCD1C9DAACB795DA20284DE0C6040D2F71334799 extends Class 
+    1 Traits Entries
+    :const__0
+    1 Script Entries
+    script0 
+    0 Traits Entries
+    4 Method Bodies
+    function :FCD1C9DAACB795DA20284DE0C6040D2F71334799:::FCD1C9DAACB795DA20284DE0C6040D2F71334799():
+    maxStack:2 localCount:1 initScopeDepth:2 maxScopeDepth:3
+        getlocal0     	
+        pushscope     	
+        getlocal0     	
+        constructsuper	(0)
+        returnvoid    	
+    0 Extras
+    0 Traits Entries
+
+    function :FCD1C9DAACB795DA20284DE0C6040D2F71334799:::FCD1C9DAACB795DA20284DE0C6040D2F71334799$cinit():
+    maxStack:0 localCount:1 initScopeDepth:0 maxScopeDepth:0
+        returnvoid    	
+    0 Extras
+    0 Traits Entries
+
+    var null::stx-el(, , ):
+    maxStack:4 localCount:8 initScopeDepth:2 maxScopeDepth:7
+        getlocal0     	
+        pushscope     	
+        newactivation 	
+        dup           	
+        pushscope     	
+        setlocal      	4
+        findpropstrict	:Object
+        getproperty   	:Object
+        dup           	
+        pushscope     	
+        newclass      	:FCD1C9DAACB795DA20284DE0C6040D2F71334799
+        dup           	
+        popscope      	
+        getglobalscope	
+        swap          	
+        initproperty  	:FCD1C9DAACB795DA20284DE0C6040D2F71334799
+        dup           	
+        getlocal1     	
+        pushstring    	"#=(var las3r.core/concat)"
+        callproperty  	:readString (1)
+        setslot       	1
+        pop           	
+        getlex        	:FCD1C9DAACB795DA20284DE0C6040D2F71334799
+        getlocal1     	
+        setproperty   	:rt
+        getlex        	:FCD1C9DAACB795DA20284DE0C6040D2F71334799
+        setlocal      	5
+        getlex        	:FCD1C9DAACB795DA20284DE0C6040D2F71334799
+        getproperty   	:rt
+        setlocal      	6
+    L0: label         	
+        getlocal2     	
+        pushnull      	
+        getlocal      	5
+        getproperty   	:const__0
+        callproperty  	:get (0)
+        coerce_a      	
+        dup           	
+        astype        	com.las3r.runtime:IFn
+        iffalse       	L1
+
+        getproperty   	:invoke0
+    L1: pushnull      	
+        call          	(0)
+        call          	(1)
+    L2: label         	
+        jump          	L3
+
+    L4: label         	
+        getlocal0     	
+        pushscope     	
+        getlocal      	4
+        pushscope     	
+        newcatch      	0
+        dup           	
+        pushscope     	
+        setlocal      	7
+        getlocal3     	
+        swap          	
+        pushnull      	
+        swap          	
+        call          	(1)
+        popscope      	
+        kill          	7
+        returnvoid    	
+    L3: returnvoid    	
+    1 Extras
+    :toplevelExceptionHandler type: from:46 to:71 target:76
+    0 Traits Entries
+
+    function script0::script0$init():
+    maxStack:2 localCount:2 initScopeDepth:0 maxScopeDepth:2
+        getlocal0     	
+        pushscope     	
+        getlocal0     	
+        dup           	
+        pushscope     	
+        setlocal1     	
+        newfunction   	stx-el
+        getlex        	com.las3r.runtime:RT
+        getproperty   	:modules
+        swap          	
+        setproperty   	:stx-el
+        returnvoid    	
+    0 Extras
+    0 Traits Entries
+
+  </DoABC>
+  <ShowFrame/>
+</swf>
