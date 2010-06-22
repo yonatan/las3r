@@ -158,7 +158,7 @@ package com.las3r.runtime{
 		}
 
 		override public function seq():ISeq{
-			return new Seq(def.keys, values, 0, ext, null);
+			return new StructMapSeq(def.keys, values, 0, ext, null);
 		}
 
 	}
@@ -166,14 +166,14 @@ package com.las3r.runtime{
 
 import com.las3r.runtime.*;
 
-class Seq extends ASeq{
+class StructMapSeq extends ASeq{
 	private var i:int;
 	private var keys:ISeq;
 	private var values:Array;
 	private var ext:IMap;
 
 
-	public function Seq(keys:ISeq, values:Array, i:int, ext:IMap, meta:IMap){
+	public function StructMapSeq(keys:ISeq, values:Array, i:int, ext:IMap, meta:IMap){
 		super(meta);
 		this.i = i;
 		this.keys = keys;
@@ -183,7 +183,7 @@ class Seq extends ASeq{
 
 	override public function withMeta(meta:IMap):IObj{
 		if(meta != _meta)
-		return new Seq(keys, values, i, ext, meta);
+		return new StructMapSeq(keys, values, i, ext, meta);
 		return this;
 	}
 
@@ -193,7 +193,7 @@ class Seq extends ASeq{
 
 	override public function rest():ISeq{
 		if(i + 1 < values.length)
-		return new Seq(keys.rest(), values, i + 1, ext, _meta);
+		return new StructMapSeq(keys.rest(), values, i + 1, ext, _meta);
 		return ext.seq();
 	}
 }

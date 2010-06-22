@@ -33,7 +33,7 @@ package com.las3r.runtime{
 	import com.hurlant.eval.ByteLoader;
 	import org.pranaframework.reflection.Type;
 
-	public class RT extends EventDispatcher{
+	public class RT {
 
 		[Embed(source="../../../../../lib/las3r.core.swf", mimeType="application/octet-stream")]
 		protected const CoreSwf:Class;

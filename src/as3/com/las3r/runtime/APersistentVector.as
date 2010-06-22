@@ -38,13 +38,13 @@ package com.las3r.runtime{
 
 		public function seq():ISeq{
 			if(count() > 0)
-			return new Seq(this, 0);
+			return new VectorSeq(this, 0);
 			return null;
 		}
 
 		public function rseq():ISeq{
 			if(count() > 0)
-			return new RSeq(this, count() - 1);
+			return new RVectorSeq(this, count() - 1);
 			return null;
 		}
 
@@ -210,13 +210,13 @@ package com.las3r.runtime{
 
 import com.las3r.runtime.*;
 
-class Seq extends ASeq implements IReduce{
+class VectorSeq extends ASeq implements IReduce{
 	//todo - something more efficient
 	private var v:IVector;
 	private var i:int;
 
 
-	public function Seq(v:IVector, i:int, meta:IMap = null){
+	public function VectorSeq(v:IVector, i:int, meta:IMap = null){
 		super(meta);
 		this.v = v;
 		this.i = i;
@@ -228,7 +228,7 @@ class Seq extends ASeq implements IReduce{
 
 	override public function rest():ISeq{
 		if(i + 1 < v.count())
-		return new Seq(v, i + 1);
+		return new VectorSeq(v, i + 1);
 		return null;
 	}
 
@@ -241,7 +241,7 @@ class Seq extends ASeq implements IReduce{
 	}
 
 	override public function withMeta(meta:IMap):IObj{
-		return new Seq(v, i, meta);
+		return new VectorSeq(v, i, meta);
 	}
 
 	override public function reduce(f:Function, start:Object):Object{
@@ -253,11 +253,11 @@ class Seq extends ASeq implements IReduce{
 	}
 }
 
-class RSeq extends ASeq {
+class RVectorSeq extends ASeq {
 	private var v:IVector;
 	private var i:int;
 
-	public function RSeq(vector:IVector, i:int, meta:IMap = null){
+	public function RVectorSeq(vector:IVector, i:int, meta:IMap = null){
 		super(meta);
 		this.v = vector;
 		this.i = i;
@@ -269,7 +269,7 @@ class RSeq extends ASeq {
 
 	override public function rest():ISeq{
 		if(i > 0)
-		return new RSeq(v, i - 1);
+		return new RVectorSeq(v, i - 1);
 		return null;
 	}
 
@@ -282,7 +282,7 @@ class RSeq extends ASeq {
 	}
 
 	override public function withMeta(meta:IMap):IObj{
-		return new RSeq(v, i, meta);
+		return new RVectorSeq(v, i, meta);
 	}
 }
 

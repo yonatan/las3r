@@ -25,7 +25,7 @@ package com.las3r.runtime{
 				return k;
 			}
 			else{
-				k = new Keyword(sym, new Lock);
+				k = new Keyword(sym, new Object); // todo: remove lock?
 				rt.internedKeywords[sym] = k;
 				return k;
 			}
@@ -35,7 +35,7 @@ package com.las3r.runtime{
 			return intern1(rt, Symbol.intern2(rt, ns, name));
 		}
 
-		public function Keyword(sym:Symbol, l:Lock){
+		public function Keyword(sym:Symbol, l:Object){ // todo: remove lock?
 			this.sym = sym;
 			this.hash = Util.hashCombine(Util.stringHash(":"), this.sym.hashCode());
 		}
@@ -201,4 +201,3 @@ package com.las3r.runtime{
 	}
 }
 
-class Lock {}

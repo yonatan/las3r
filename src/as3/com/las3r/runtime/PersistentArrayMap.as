@@ -139,7 +139,7 @@ package com.las3r.runtime{
 
 		override public function seq():ISeq {
 			if(array.length > 0)
-			return new Seq(array, 0, meta);
+			return new ArrayMapSeq(array, 0, meta);
 			return null;
 		}
 
@@ -155,11 +155,11 @@ import com.las3r.runtime.Obj;
 import com.las3r.runtime.IObj;
 
 
-class Seq extends ASeq{
+class ArrayMapSeq extends ASeq{
 	private var array:Array;
 	private var i:int;
 
-	public function Seq(array:Array, i:int, meta:IMap = null){
+	public function ArrayMapSeq(array:Array, i:int, meta:IMap = null){
 		super(meta);
 		this.array = array;
 		this.i = i;
@@ -171,7 +171,7 @@ class Seq extends ASeq{
 
 	override public function rest():ISeq{
 		if(i + 2 < array.length)
-		return new Seq(array, i + 2, meta);
+		return new ArrayMapSeq(array, i + 2, meta);
 		return null;
 	}
 
@@ -180,6 +180,6 @@ class Seq extends ASeq{
 	}
 
 	override public function withMeta(meta:IMap):IObj{
-		return new Seq(array, i, meta);
+		return new ArrayMapSeq(array, i, meta);
 	}
 }
