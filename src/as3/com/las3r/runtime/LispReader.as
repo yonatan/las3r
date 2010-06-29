@@ -39,7 +39,7 @@ package com.las3r.runtime{
 			_rt = rt;
 
 			macros = RT.map(
-				CharUtil.DOUBLE_QUOTE, new StringReader(this),
+				CharUtil.DOUBLE_QUOTE, new LispStringReader(this),
 				CharUtil.SEMICOLON, new CommentReader(this),
 				CharUtil.SINGLE_QUOTE, new WrappingReader(this, _rt.QUOTE),
 				CharUtil.AT, new WrappingReader(this, _rt.DEREF),
@@ -375,11 +375,11 @@ interface IReaderMacro {
 	function invoke(reader:Object, token:Object):Object;
 }
 
-class StringReader implements IReaderMacro{
+class LispStringReader implements IReaderMacro{
 
 	protected var _reader:LispReader;
 
-	public function StringReader(reader:LispReader){
+	public function LispStringReader(reader:LispReader){
 		_reader = reader;
 	}
 

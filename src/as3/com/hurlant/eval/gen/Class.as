@@ -3,11 +3,11 @@ package com.hurlant.eval.gen
 	import com.hurlant.eval.Util;
 	import com.hurlant.eval.abc.ABCClassInfo;
 	
-	public class Class
+	public class Klass
 	{
         public var s, name, basename, traits=[], instance=null, cinit;
 
-        function Class(script, name, basename) {
+        function Klass(script, name, basename) {
             this.s = script;
             this.name = name;
             this.basename = basename;

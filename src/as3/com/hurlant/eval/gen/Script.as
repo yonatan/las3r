@@ -12,7 +12,7 @@ package com.hurlant.eval.gen
         }
 
         public function newClass(name, basename) {
-            return new com.hurlant.eval.gen.Class(this, name, basename);
+            return new com.hurlant.eval.gen.Klass(this, name, basename);
         }
 
         /* All functions are in some sense global because the
