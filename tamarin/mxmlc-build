@@ -1,0 +1,11 @@
+#!/bin/bash
+
+abcfiles=RT*.abc
+#imports=`echo $abcfiles | sed -e 's/RT/-import RT/g'`
+echo "abcFilesCount = " `ls RT*.abc | wc -l` ";" >> abc-count.as
+
+java -jar /home/yonatan/src/play/flexsdk/trunk/lib/asc.jar \
+-import /home/yonatan/src/play/tamarin-redux/core/builtin.abc \
+-import /home/yonatan/src/play/tamarin-redux/shell/shell_toplevel.abc \
+-d \
+shell-repl.as

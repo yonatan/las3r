@@ -26,6 +26,8 @@ COMPILE_OPTIONS = [
                    # ABCDump has tons of warnings unless we disable these:
                    "-compiler.warn-no-type-decl=false",
                    "-compiler.optimize=true",
+		   "-define=TARGET::flashplayer,true",
+		   "-define=TARGET::avmshell,false",
                    "-compiler.source-path #{SHARED_CLASS_PATH.join(" ")}"
                   ]
 
@@ -34,6 +36,8 @@ SWC_OPTIONS = [
                "-directory=false",
                "-debug=false",
                "-compiler.warn-no-type-decl=false",
+               "-define=TARGET::flashplayer,true",
+               "-define=TARGET::avmshell,false",
                "-compiler.optimize=true",
                "-source-path #{SHARED_CLASS_PATH.join(" ")}"
               ]

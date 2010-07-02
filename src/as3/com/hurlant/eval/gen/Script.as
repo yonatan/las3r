@@ -1,6 +1,7 @@
 package com.hurlant.eval.gen
 {
 	import com.hurlant.eval.abc.ABCScriptInfo;
+	import com.hurlant.eval.gen.Klass;
 	
 	public class Script
 	{
@@ -12,7 +13,7 @@ package com.hurlant.eval.gen
         }
 
         public function newClass(name, basename) {
-            return new com.hurlant.eval.gen.Klass(this, name, basename);
+            return new Klass(this, name, basename);
         }
 
         /* All functions are in some sense global because the

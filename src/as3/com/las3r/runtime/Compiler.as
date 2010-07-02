@@ -87,6 +87,7 @@ package com.las3r.runtime{
 		}
 
 
+		TARGET::flashplayer
 		/**
 		* Don't call this directly. Use interface in RT.
 		* 
@@ -162,6 +163,55 @@ package com.las3r.runtime{
 				true
 			);
 		}
+
+
+		TARGET::avmshell
+		/**
+		* Synchronous avmshell version
+		*/
+		public function load(rdr:PushbackReader, _onComplete:Function = null, _onFailure:Function = null, _progress:Function = null, sourcePath:String = null, sourceName:String = null):Object{
+			var onComplete:Function = _onComplete || function(val:*):void{};
+			var onFailure:Function = _onFailure || function(error:*):void{};
+			var progress:Function = _progress || function():void{};
+
+			var form:Object;
+
+			var EOF:Object = new Object();
+			var ret:Object;
+
+			try {
+				while(EOF != (form = rt.lispReader.read(rdr, false, EOF))) {
+					var moduleId:String = GUID.create();
+					var current:SWFGen = new SWFGen(rt, moduleId);
+					try{
+						Var.pushBindings(rt,
+							RT.map(
+								CURRENT_MODULE_SWF, current
+							)
+						);
+						var expr:Expr = analyze(C.EXPRESSION, form);
+					}
+					finally{
+						Var.popBindings(rt);
+					}
+
+					var aot:SWFGen = SWFGen(rt.AOT_MODULE_SWF.get());
+					if(aot != null){ aot.addExpr(expr); }
+
+					current.addExpr(expr);
+
+					var abc:ByteArray = current.emit();
+					ret = RT.avmshellDomain.loadBytes(abc);
+				}
+			} catch(e:LispError) {
+				onFailure(e);
+				return e;
+			}
+			onComplete(ret);
+			return ret;
+		}
+
+		//////////////////////////////////////////
 
 		public function beginAOTCompile(moduleId:String):void{
 			rt.AOT_MODULE_SWF.set(new SWFGen(rt, moduleId));

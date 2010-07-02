@@ -1,0 +1,8 @@
+#!/bin/bash
+
+java -jar /home/yonatan/src/play/flexsdk/trunk/lib/asc.jar \
+ -config TARGET::avmshell=true \
+ -config TARGET::flashplayer=false \
+ -import /home/yonatan/src/play/tamarin-redux/shell/shell_toplevel.abc \
+ -import /home/yonatan/src/play/tamarin-redux/core/builtin.abc \
+ shell-repl.as 

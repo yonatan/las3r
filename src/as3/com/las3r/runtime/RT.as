@@ -12,7 +12,6 @@
 
 package com.las3r.runtime{
 	
-
 	import com.las3r.io.*;
 	import com.las3r.jdk.io.*;
 	import com.las3r.runtime.LispNamespace;
@@ -23,7 +22,6 @@ package com.las3r.runtime{
 	import com.las3r.util.Benchmarks;
 	import com.las3r.util.RegExpUtil;
 	import flash.events.*;
-	import flash.display.Stage;
 	import flash.utils.Dictionary;
 	import flash.utils.ByteArray;
 	import flash.utils.getDefinitionByName;
@@ -34,6 +32,7 @@ package com.las3r.runtime{
 	import org.pranaframework.reflection.Type;
 
 	public class RT {
+		public static var avmshellDomain:Object;
 
 		[Embed(source="../../../../../lib/las3r.core.swf", mimeType="application/octet-stream")]
 		protected const CoreSwf:Class;
@@ -70,8 +69,8 @@ package com.las3r.runtime{
 		private var _lispReader:LispReader;
 		public function get lispReader():LispReader { return _lispReader }
 
-		private var _stage:Stage;
-		public function get stage():Stage { return _stage }
+		private var _stage:Object;
+		public function get stage():Object { return _stage }
 
 
 		public static var T:Boolean = true;
@@ -147,7 +146,7 @@ package com.las3r.runtime{
 			);
 		}
 
-		public function RT(stage:Stage = null, out:OutputStream = null, err:OutputStream = null, inn:InputStream = null):void{
+		public function RT(stage:Object = null, out:OutputStream = null, err:OutputStream = null, inn:InputStream = null):void{
 			_this = this;
 			_stage = stage;
 			stdout = out || new TraceStream();
@@ -344,11 +343,11 @@ package com.las3r.runtime{
 		* Add the task of evaluating swfBytes to the work queue.
 		* 
 		*/	
-		public function loadModule(moduleId:String, swfBytes:ByteArray, callback:Function, errorCallback:Function):void{
+		public function loadModule(moduleId:String, swfBytes:ByteArray, callback:Function, errorCallback:Function):Object{
 			var c:Function = callback;
 			var p:Function = function(a:int, b:int):void{};
 			var f:Function = errorCallback;
-			queueEvalUnit(new SWFModuleEvalUnit(moduleId, swfBytes, c, f, p));
+			return queueEvalUnit(new SWFModuleEvalUnit(moduleId, swfBytes, c, f, p));
 		}
 
 
@@ -356,17 +355,45 @@ package com.las3r.runtime{
 		* Add the task of evaluating src to the work queue.
 		* 
 		*/		
-		public function evalStr(src:String, onComplete:Function = null, progress:Function = null, onFailure:Function = null):void{
+		public function evalStr(src:String, onComplete:Function = null, progress:Function = null, onFailure:Function = null):Object{
 			var c:Function = onComplete || function(v:*):void{};
 			var p:Function = progress || function():void{};
 			var f:Function = onFailure || function(e:*):void{};
 			var reader:PushbackReader = new LineNumberingPushbackReader(new StringReader(src));
-			queueEvalUnit(new ReaderEvalUnit(reader, c, f, p));
+			return queueEvalUnit(new ReaderEvalUnit(reader, c, f, p));
 		}
 
-		protected function queueEvalUnit(unit:EvalUnit):void{
+		TARGET::flashplayer
+		protected function queueEvalUnit(unit:EvalUnit):Object{
 			_evalQ.push(unit);
 			if(_evalQ.length == 1) evalNextInQ();
+			return null;
+		}
+
+		TARGET::avmshell
+		// Synchronous version for avmshell
+		protected function queueEvalUnit(unit:EvalUnit):Object{
+			if(unit is SWFModuleEvalUnit){
+				var moduleId:String = SWFModuleEvalUnit(unit).moduleId;
+				var bytes:ByteArray = SWFModuleEvalUnit(unit).bytes;
+
+				avmshellDomain.currentDomain.loadBytes(bytes);
+				var moduleConstructor:Function = RT.modules[moduleId];
+				
+				if(!(moduleConstructor is Function)) {
+					throw new Error("IllegalStateException: no module constructor at " + moduleId);
+				}
+				return moduleConstructor(
+					_this, 
+					function():void{}, 
+					function(error:*){
+						unit.error(error);
+					});
+			}
+			else if(unit is ReaderEvalUnit){
+				return _compiler.load(ReaderEvalUnit(unit).reader);
+			}
+			else throw new Error("Unknown EvalUnit.");
 		}
 
 		protected function evalNextInQ():void{
