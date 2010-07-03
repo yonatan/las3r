@@ -1,4 +1,5 @@
-// maybe I should just build RT with mxmlc and link with the resulting swf??
+// asc.jar doesn't do dependency resolution.
+// This file was generated using the compile-curse-rearrange-repeat technique.
 
 include "../src/as3/com/hurlant/eval/ByteLoader.as"
 include "../src/as3/com/hurlant/eval/Util.as"
@@ -93,7 +94,6 @@ include "../src/as3/com/las3r/runtime/UnquoteSplicing.as"
 include "../src/as3/com/las3r/runtime/Var.as"
 include "../src/as3/com/las3r/util/Benchmarks.as"
 include "../src/as3/com/las3r/util/CharUtil.as"
-// include "../src/as3/com/las3r/util/ExecHelper.as"
 include "../src/as3/com/las3r/util/GUID.as"
 include "../src/as3/com/las3r/util/RegExpUtil.as"
 include "../src/as3/com/las3r/util/StringBuffer.as"
