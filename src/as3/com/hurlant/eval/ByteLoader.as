@@ -69,6 +69,9 @@ package com.hurlant.eval {
 			return out;
 		}
 
+
+		TARGET::flashplayer // leave out of avmshell build, the compiler will load the bytecode instead.
+
 		/**
 		* Load the bytecodes passed into the flash VM, using
 		* the current application domain, or a child of it
@@ -103,6 +106,7 @@ package com.hurlant.eval {
 			loaders.push(l);
 			return true;
 		}
+
 		public static function isSWF(data:ByteArray):Boolean {
 			var type:int = getType(data);
 			return (type&1)==1;

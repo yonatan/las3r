@@ -127,7 +127,6 @@ package com.las3r.gen{
 			var gen:CodeGen = new CodeGen(staticsGuid, _emitter, _script, null, _constants);
 
 			gen.pushThisScope();
-			gen.pushNewActivationScope();
 
 			/* Define module constructor function.. */
 			var formalsTypes:Array = [0, 0, 0]; //rt:*, callback:*, errorCallback*
@@ -217,7 +216,7 @@ package com.las3r.gen{
 			var bytes:ByteArray = file.getBytes();
 			bytes.position = 0;
 			_finalized = true;
-			return ByteLoader.wrapInSWF([bytes]);
+			return (TARGET::flashplayer ? ByteLoader.wrapInSWF([bytes]) : bytes);
 		}
 
 
