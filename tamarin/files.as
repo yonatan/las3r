@@ -1,6 +1,6 @@
 // maybe I should just build RT with mxmlc and link with the resulting swf??
 
-//include "../src/as3/com/hurlant/eval/ByteLoader.as"
+include "../src/as3/com/hurlant/eval/ByteLoader.as"
 include "../src/as3/com/hurlant/eval/Util.as"
 include "../src/as3/com/hurlant/eval/abc/ABCClassInfo.as"
 include "../src/as3/com/hurlant/eval/abc/ABCConstantPool.as"
