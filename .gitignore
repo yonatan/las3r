@@ -1,4 +1,5 @@
 deploy
 *.swf
 *.swc
+*.abc
 upload_swfs.sh
