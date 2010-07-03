@@ -374,6 +374,7 @@ package com.las3r.runtime{
 		// Synchronous version for avmshell
 		protected function queueEvalUnit(unit:EvalUnit):Object{
 			if(unit is SWFModuleEvalUnit){
+				trace("avmshell - queueEvalUnit - SWFModuleEvalUnit");
 				var moduleId:String = SWFModuleEvalUnit(unit).moduleId;
 				var bytes:ByteArray = SWFModuleEvalUnit(unit).bytes;
 
@@ -381,17 +382,23 @@ package com.las3r.runtime{
 				var moduleConstructor:Function = RT.modules[moduleId];
 				
 				if(!(moduleConstructor is Function)) {
+					trace("IllegalStateException: no module constructor at " + moduleId);
 					throw new Error("IllegalStateException: no module constructor at " + moduleId);
 				}
 				return moduleConstructor(
 					_this, 
-					function():void{}, 
+					function():void{trace("moduleConstructor complete")}, 
 					function(error:*){
+						trace("moduleConstructor error: " + error)
 						unit.error(error);
 					});
 			}
 			else if(unit is ReaderEvalUnit){
-				return _compiler.load(ReaderEvalUnit(unit).reader);
+				trace("avmshell - queueEvalUnit - ReaderEvalUnit");
+				return _compiler.load(
+					ReaderEvalUnit(unit).reader,
+					ReaderEvalUnit(unit).finished,
+					ReaderEvalUnit(unit).error);
 			}
 			else throw new Error("Unknown EvalUnit.");
 		}
