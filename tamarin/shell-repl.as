@@ -7,14 +7,6 @@ com.las3r.runtime.RT.avmshellDomain = Domain.currentDomain;
 var rt;
 trace(rt = new com.las3r.runtime.RT);
 
-function complete(x:*) {
-  trace("complete: " + x);
-}
-
-function err(x:*) {
-  trace("error: " + x);
-}
-
 // (defn compile-str
 //   "Evaluate all forms in src, returns a ByteArray containing compiled swf."
 //   [src module-id callback]
@@ -37,13 +29,20 @@ function compileStr(src:String, id:String):ByteArray {
 	return bytes;
 }
 
+
+// some player emulation from redtamarin
+
 function getDefinitionByName(name:String):Object {
 	return Domain.currentDomain.getClass(name) as Object;
 }
 
+function getQualifiedClassName(value:*):String {
+    return avmplus.getQualifiedClassName( value );
+}
+
 // I don't think asc.jar likes embed tags...
 var src = ByteArray.readFile("../src/lsr/las3r.core.lsr");
-rt.evalStr(src, complete, err);
+rt.evalStr(src);
 
 // rt.evalStr("(trace 'foo)", complete, err);
 
@@ -56,6 +55,10 @@ rt.evalStr(src, complete, err);
 
 var line;
 
-while(line = readLine()) {
-	rt.evalStr(line, complete, err);
+
+while(true) {
+	System.write("=> ");
+	line = readLine();
+	if(!line) break;
+	trace(rt.evalStr(line));
 }
