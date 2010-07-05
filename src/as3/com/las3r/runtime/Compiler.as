@@ -170,6 +170,7 @@ package com.las3r.runtime{
 		* Synchronous avmshell version
 		*/
 		public function load(rdr:PushbackReader, _onComplete:Function = null, _onFailure:Function = null, _progress:Function = null, sourcePath:String = null, sourceName:String = null):Object{
+			trace("avmshell - Compiler.load");
 			var onComplete:Function = _onComplete || function(val:*):void{};
 			var onFailure:Function = _onFailure || function(error:*):void{};
 			var progress:Function = _progress || function():void{};
@@ -181,6 +182,7 @@ package com.las3r.runtime{
 
 			try {
 				while(EOF != (form = rt.lispReader.read(rdr, false, EOF))) {
+					trace("form: " + rt.printString(form));
 					var moduleId:String = GUID.create();
 					var current:SWFGen = new SWFGen(rt, moduleId);
 					try{
@@ -189,6 +191,7 @@ package com.las3r.runtime{
 								CURRENT_MODULE_SWF, current
 							)
 						);
+						trace("pushed bindings");
 						var expr:Expr = analyze(C.EXPRESSION, form);
 					}
 					finally{
@@ -202,8 +205,16 @@ package com.las3r.runtime{
 
 					var abc:ByteArray = current.emit();
 					ret = RT.avmshellDomain.loadBytes(abc);
+
+					var moduleConstructor:Function = RT.modules[moduleId];
+					if(!(moduleConstructor is Function)) {
+						throw new Error("IllegalStateException: no module constructor at " + moduleId);
+					}
+					moduleConstructor(rt, onComplete, onFailure);
+					trace("form loaded");
 				}
 			} catch(e:LispError) {
+				trace("form not loaded: " + e);
 				onFailure(e);
 				return e;
 			}
@@ -301,6 +312,7 @@ package com.las3r.runtime{
 
 
 		public function analyze(context:C, form:Object, name:String = null):Expr{
+			trace("analyze: " + rt.printString(form));
 			// TODO Re-add line-number tracking here (requires metadata).
 			var line:int = int(LINE.get());
 			if(RT.meta(form) != null && RT.meta(form).containsKey(_rt.LINE_KEY)){
@@ -365,6 +377,7 @@ package com.las3r.runtime{
 
 
 		private function analyzeSymbol(sym:Symbol):Expr{
+			trace("analyzeSymbol");
 
 			if(sym.ns == null) //ns-qualified syms are always Vars
 			{
@@ -397,19 +410,25 @@ package com.las3r.runtime{
 		}
 
 		private function analyzeSeq(context:C, form:ISeq , name:String ):Expr {
+			trace("analyzeSeq: " + rt.printString(form));
 			var me:Object = macroexpand1(form);
+			trace("analyzeSeq - macroexpanded: " + rt.printString(me));
 			if(me != form)
 			return analyze(context, me, name);
 
 			var op:Object = RT.first(form);
+			trace("op: " + op);
 			if(Util.equal(_rt.FN, op)){
+				trace("Util.equal(_rt.FN, op)");
 				return FnExpr.parse(this, context, form);
 			}
 			else if(specialParsers.valAt(op) != null){
+				trace("specialParsers.valAt(op) != null");
 				var parse:Function = specialParsers.valAt(op) as Function;
 				return parse(this, context, form);
 			}
 			else{
+				trace("parsing");
 				return InvokeExpr.parse(this, context, form);
 			}
 			return null;
@@ -418,17 +437,21 @@ package com.las3r.runtime{
 		public function macroexpand1(x:Object):Object{
 			if(x is ISeq)
 			{
+				trace("macroexpand1, ISeq");
 				var form:ISeq = ISeq(x);
 				var op:Object = RT.first(form);
+				trace(op);
 				if(isSpecial(op))
 				return x;
 				//macro expansion
 				var v:Var = isMacro(op);
 				if(v != null)
 				{
+					trace("isMacro");
 					return v.applyTo(form.rest());
 				}
 			}
+			trace("macroexpand1, x is not an ISeq, or unchanged");
 			return x;
 		}
 
