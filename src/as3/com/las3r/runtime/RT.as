@@ -784,7 +784,7 @@ package com.las3r.runtime{
 		}
 
 		public static function first(x:Object):Object{
-			var seq:ISeq = seq(x);
+			var seq:ISeq = RT.seq(x);
 			if(seq == null)
 			return null;
 			return seq.first();
@@ -803,7 +803,7 @@ package com.las3r.runtime{
 		}
 
 		public static function rest(x:Object):ISeq{
-			var seq:ISeq = seq(x);
+			var seq:ISeq = RT.seq(x);
 			if(seq == null)
 			return null;
 			return seq.rest();
