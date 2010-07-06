@@ -171,14 +171,15 @@ package com.las3r.runtime{
 		*/
 		public function load(rdr:PushbackReader, _onComplete:Function = null, _onFailure:Function = null, _progress:Function = null, sourcePath:String = null, sourceName:String = null):Object{
 			trace("avmshell - Compiler.load");
-			var onComplete:Function = _onComplete || function(val:*):void{};
-			var onFailure:Function = _onFailure || function(error:*):void{};
-			var progress:Function = _progress || function():void{};
 
 			var form:Object;
 
 			var EOF:Object = new Object();
 			var ret:Object;
+
+			function setRetVal(x:Object):void {
+				ret = x;
+			}
 
 			try {
 				while(EOF != (form = rt.lispReader.read(rdr, false, EOF))) {
@@ -210,15 +211,13 @@ package com.las3r.runtime{
 					if(!(moduleConstructor is Function)) {
 						throw new Error("IllegalStateException: no module constructor at " + moduleId);
 					}
-					moduleConstructor(rt, onComplete, onFailure);
+					moduleConstructor(rt, setRetVal, setRetVal);
 					trace("form loaded");
 				}
 			} catch(e:LispError) {
 				trace("form not loaded: " + e);
-				onFailure(e);
 				return e;
 			}
-			onComplete(ret);
 			return ret;
 		}
 
@@ -475,12 +474,14 @@ package com.las3r.runtime{
 
 
 		public function referenceLocal(sym:Symbol):LocalBinding{
+			trace("referenceLocal: " + sym);
 			var bindingSetStack:IVector = IVector(BINDING_SET_STACK.get());
 			var len:int = bindingSetStack.count();
 			for(var i:int = len - 1; i >= 0; i--){
 				var lbs:LocalBindingSet = LocalBindingSet(bindingSetStack.nth(i));
 				var b:LocalBinding = LocalBinding(lbs.bindingFor(sym));
 				if(b){
+					trace("referenceLocal result: " + b);
 					return b;
 				}
 			}
@@ -791,6 +792,7 @@ class IfExpr implements Expr{
 	}
 
 	public function emit(context:C, gen:CodeGen):void{
+		trace("IfExpr.emit context: " + context);
 		testExpr.emit(C.EXPRESSION, gen);
 
 		/* NOTE: newLabel() will remember the stack depth at the location
@@ -833,6 +835,7 @@ class IfExpr implements Expr{
 	}
 
 	public static function parse(c:Compiler, context:C, frm:Object):Expr{
+		trace("IfExpr.parse context: " + context);
 		var form:ISeq = ISeq(frm);
 		//(if test then) or (if test then else)
 		if(form.count() > 4)
@@ -1401,6 +1404,7 @@ class InvokeExpr implements Expr{
 	}
 
 	public static function parse(c:Compiler, context:C, form:ISeq):Expr{
+		trace("InvokeExpr.parse context: " + context);
 		if(context != C.INTERPRET){
 			context = C.EXPRESSION;
 		}
