@@ -364,6 +364,7 @@ package com.las3r.runtime{
 			catch(e:*) 
 			{
 				var msg:String = "CompilerError at " + SOURCE.get() + ":" + int(LINE.get()) + ":  " + (e is Error ? Error(e).message : String(e));
+				trace(e.getStackTrace());
 				throw new CompilerError(msg);
 			}
 			finally

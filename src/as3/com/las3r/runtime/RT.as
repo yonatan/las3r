@@ -738,7 +738,7 @@ package com.las3r.runtime{
 			var a:Array = [];
 			var b:Array = [];
 
-			var count:int = count(seq);
+			var count:int = RT.count(seq);
 			if((count % 2) != 0)
 			throw new Error("IllegalArgumentException: Bad argument to unzip, expected even number of args.");
 
