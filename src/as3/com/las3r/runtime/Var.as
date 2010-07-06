@@ -201,6 +201,7 @@ package com.las3r.runtime{
 		}
 
 		public function isMacro():Boolean{
+			trace("Var.isMacro:" + sym);
 			return (_meta.valAt(_rt.MACRO_KEY) === RT.T);
 		}
 

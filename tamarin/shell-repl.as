@@ -60,5 +60,6 @@ while(true) {
 	System.write("=> ");
 	line = readLine();
 	if(!line) break;
-	trace(rt.evalStr(line));
+	var result:* = rt.evalStr(line);
+	trace(rt.printString(result));
 }
